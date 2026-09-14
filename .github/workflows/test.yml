@@ -94,7 +94,6 @@ jobs:
           MOLE_PERF_GET_FILE_SIZE_LIMIT_MS: "3000"
           MOLE_PERF_NORMALIZE_PATHS_LIMIT_MS: "10000"
           MOLE_TEST_JOBS: "3"
-          MOLE_TEST_REPORT_DIR: ${{ runner.temp }}/bats-report
         run: |
           bash scripts/check_test_sandbox.sh
           ./scripts/test.sh
