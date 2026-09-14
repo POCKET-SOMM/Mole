@@ -26,6 +26,7 @@ source "$SCRIPT_DIR/lib/optimize/diagnostics.sh"
 source "$SCRIPT_DIR/lib/optimize/maintenance.sh"
 source "$SCRIPT_DIR/lib/optimize/catalog.sh"
 source "$SCRIPT_DIR/lib/optimize/tasks.sh"
+source "$SCRIPT_DIR/lib/optimize/review.sh"
 source "$SCRIPT_DIR/lib/check/health_json.sh"
 source "$SCRIPT_DIR/lib/manage/whitelist.sh"
 
@@ -200,7 +201,6 @@ main() {
     # Set current command for operation logging
     export MOLE_CURRENT_COMMAND="optimize"
 
-    local health_json
     for arg in "$@"; do
         case "$arg" in
             "--help" | "-h")
@@ -225,103 +225,10 @@ main() {
         esac
     done
 
-    log_operation_session_start "optimize"
-
     trap 'cleanup_all "$?"' EXIT
     trap handle_interrupt INT TERM
+    mole_optimize_review
 
-    if [[ -t 1 ]]; then
-        clear_screen
-    fi
-    print_header
-
-    # Dry-run indicator.
-    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No files will be modified\n"
-    fi
-
-    if ! command -v bc > /dev/null 2>&1; then
-        echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: bc"
-        echo -e "${GRAY}Install with: ${GREEN}brew install bc${NC}"
-        exit 1
-    fi
-
-    if [[ -t 1 ]]; then
-        start_inline_spinner "Collecting system info..."
-    fi
-
-    if ! health_json=$(generate_health_json 2> /dev/null); then
-        if [[ -t 1 ]]; then
-            stop_inline_spinner
-        fi
-        echo ""
-        log_error "Failed to collect system health data"
-        exit 1
-    fi
-
-    if ! json_validate "$health_json"; then
-        if [[ -t 1 ]]; then
-            stop_inline_spinner
-        fi
-        echo ""
-        log_error "Invalid system health data format"
-        echo -e "${GRAY}${ICON_REVIEW}${NC} Check if awk, sysctl, and df commands are available"
-        exit 1
-    fi
-
-    if [[ -t 1 ]]; then
-        stop_inline_spinner
-    fi
-
-    load_whitelist "optimize"
-    if [[ ${#CURRENT_WHITELIST_PATTERNS[@]} -gt 0 ]]; then
-        local count=${#CURRENT_WHITELIST_PATTERNS[@]}
-        if [[ $count -le 3 ]]; then
-            local patterns_list=$(
-                IFS=', '
-                echo "${CURRENT_WHITELIST_PATTERNS[*]}"
-            )
-            echo -e "${ICON_ADMIN} Active Whitelist: ${patterns_list}"
-        fi
-    fi
-
-    show_system_health "$health_json"
-
-    run_optimize_diagnostics
-
-    echo ""
-    # Track sudo availability so individual tasks can skip cleanly when admin
-    # access was denied. Without this, every sudo task re-prompts for the
-    # password and half-runs after a refusal. Default true in dry-run so the
-    # task list still expands fully for inspection.
-    export MOLE_OPTIMIZE_SUDO_AVAILABLE="false"
-    if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        MOLE_OPTIMIZE_SUDO_AVAILABLE="true"
-    elif ensure_sudo_session "System optimization requires admin access"; then
-        MOLE_OPTIMIZE_SUDO_AVAILABLE="true"
-    else
-        opt_msg "Skipping sudo-required optimizations: admin access not granted"
-    fi
-
-    export FIRST_ACTION=true
-    optimize_outcomes_reset
-    local index action health_name
-    for ((index = 0; index < ${#MOLE_OPTIMIZE_ACTIONS[@]}; index++)); do
-        action=${MOLE_OPTIMIZE_ACTIONS[$index]}
-        health_name=${MOLE_OPTIMIZE_HEALTH_NAMES[$index]}
-        announce_action "$health_name"
-        execute_optimization "$action"
-    done
-
-    if [[ "$(optimize_outcome_total)" -ne ${#MOLE_OPTIMIZE_ACTIONS[@]} ]]; then
-        log_error "Optimize task outcomes are incomplete"
-        return 1
-    fi
-
-    show_optimization_summary
-
-    printf '\n'
-    optimize_outcomes_succeeded
 }
 
 main "$@"

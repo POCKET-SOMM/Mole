@@ -27,6 +27,7 @@ source "$SCRIPT_DIR/../lib/clean/app_caches.sh"
 source "$SCRIPT_DIR/../lib/clean/hints.sh"
 source "$SCRIPT_DIR/../lib/clean/system.sh"
 source "$SCRIPT_DIR/../lib/clean/user.sh"
+source "$SCRIPT_DIR/../lib/clean/review.sh"
 
 SYSTEM_CLEAN=false
 DRY_RUN=false
@@ -814,6 +815,11 @@ _safe_clean_impl() {
     local delete_guard="$1"
     shift
 
+    if [[ "${_MOLE_REVIEW_PHASE:-}" == collect ]]; then
+        mole_review_collect "$delete_guard" "$@"
+        return $?
+    fi
+
     local pending_clean_cancel="${MOLE_CLEAN_CANCEL_STATUS:-0}"
     if [[ "${MOLE_CURRENT_COMMAND:-}" == "clean" &&
         ("$pending_clean_cancel" -eq 124 || "$pending_clean_cancel" -ge 128) ]]; then
@@ -1197,7 +1203,7 @@ _safe_clean_impl() {
                         # A removal timeout (124) is a failed removal, not a
                         # user interrupt: count it below and keep cleaning so
                         # one slow disk item never cancels the rest of the run.
-                        if [[ $action_rc -ge 128 ]]; then
+                        if [[ $action_rc -ge 128 || ($action_rc -eq 124 && "${_MOLE_REVIEW_PHASE:-}" == apply) ]]; then
                             cleanup_interrupt_rc=$action_rc
                             break
                         elif [[ $action_rc -eq 0 ]]; then
@@ -1307,7 +1313,7 @@ _safe_clean_impl() {
                         "$bound_target_id" || action_rc=$?
                     # Same non-fatal removal-timeout policy as the
                     # parallel-result loop above.
-                    if [[ $action_rc -ge 128 ]]; then
+                    if [[ $action_rc -ge 128 || ($action_rc -eq 124 && "${_MOLE_REVIEW_PHASE:-}" == apply) ]]; then
                         cleanup_interrupt_rc=$action_rc
                         break
                     elif [[ $action_rc -eq 0 ]]; then
@@ -2106,10 +2112,11 @@ main() {
         shift
     done
 
-    start_cleanup
-    hide_cursor
     local cleanup_rc=0
-    perform_cleanup || cleanup_rc=$?
+    mole_review_clean || cleanup_rc=$?
+    if [[ "${MO_DEBUG:-0}" == 1 ]]; then
+        printf 'Debug session log saved to: %s\n' "$DEBUG_LOG_FILE"
+    fi
     show_cursor
     exit "$cleanup_rc"
 }

@@ -387,7 +387,7 @@ EOF
 }
 
 @test "bundle_has_installed_app covers nested Homebrew Caskroom apps" {
-    local cask_root="$HOME/Caskroom"
+    local cask_root="$FAKE_HOME/Caskroom"
     make_app "$cask_root/example/1.2.3/Example.app" "com.example.caskroom"
 
     run env CASK_ROOT="$cask_root" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'

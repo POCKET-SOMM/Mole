@@ -518,8 +518,8 @@ detect_architecture() {
 }
 
 get_free_space_target() {
-    local target="/"
-    if [[ -d "/System/Volumes/Data" ]]; then
+    local target="${1:-/}"
+    if [[ "$target" == / && -d "/System/Volumes/Data" ]]; then
         target="/System/Volumes/Data"
     fi
 
@@ -529,10 +529,11 @@ get_free_space_target() {
 # Get free disk space on root volume in 1K blocks.
 get_free_space_kb() {
     local target
-    target=$(get_free_space_target)
+    target=$(get_free_space_target "${1:-/}")
 
     local available_kb
-    available_kb=$(command df -Pk "$target" 2> /dev/null | awk 'NR==2 {print $4}' || true)
+    available_kb=$(LC_ALL=C run_with_timeout "${MOLE_TIMEOUT_SHORT_QUERY_SEC:-3}" \
+        df -Pk "$target" 2> /dev/null | awk 'NR==2 {print $4}' || true)
     if [[ "$available_kb" =~ ^[0-9]+$ ]]; then
         printf '%s\n' "$available_kb"
         return 0

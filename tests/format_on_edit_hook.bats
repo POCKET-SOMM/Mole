@@ -12,11 +12,11 @@ setup() {
     printf 'package demo\n' > "$TEST_REPO/cmd/demo/main.go"
     printf '#!/bin/bash\n' > "$TEST_REPO/scripts/demo.sh"
 
-    cat > "$STUB_BIN/goimports" <<'SH'
+    cat > "$STUB_BIN/goimports" << 'SH'
 #!/bin/bash
 printf 'goimports:%s\n' "$*" >> "$FORMAT_LOG"
 SH
-    cat > "$STUB_BIN/shfmt" <<'SH'
+    cat > "$STUB_BIN/shfmt" << 'SH'
 #!/bin/bash
 printf 'shfmt:%s\n' "$*" >> "$FORMAT_LOG"
 SH
@@ -75,7 +75,7 @@ run_hook() {
     done
 
     skill_link="$PROJECT_ROOT/.agents/skills/release-notes"
-    [ -x "$skill_link/scripts/post-reactions.sh" ]
+    [ ! -e "$skill_link/scripts/post-reactions.sh" ]
     grep -q '^policy:$' "$skill_link/agents/openai.yaml"
     grep -q '^  allow_implicit_invocation: false$' "$skill_link/agents/openai.yaml"
 }

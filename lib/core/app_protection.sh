@@ -29,6 +29,7 @@ fi
 # stays focused on logic. See app_protection_data.sh for the lists.
 # shellcheck source=lib/core/app_protection_data.sh
 source "$_MOLE_CORE_DIR/app_protection_data.sh"
+source "$_MOLE_CORE_DIR/local_policy.sh"
 
 # Return 0 when Xcode/build tooling is active, 1 after reliable no-match
 # results, and 2 when process ownership cannot be established.
@@ -357,6 +358,8 @@ _mole_is_shared_home_state_root() {
 should_protect_path() {
     local path="$1"
     [[ -z "$path" ]] && return 1
+
+    mole_local_cleanup_protected "$path" && return 0
 
     if _mole_is_shared_home_state_root "$path"; then
         return 0

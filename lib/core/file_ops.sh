@@ -37,6 +37,8 @@ if [[ -z "${MOLE_TIMEOUTS_LOADED:-}" ]]; then
     source "$_MOLE_CORE_DIR/timeouts.sh"
 fi
 
+source "$_MOLE_CORE_DIR/local_policy.sh"
+
 # Keep the removal-timeout summary actionable: record which path ran out of
 # budget so the closing note can name it instead of a bare count.
 _mole_record_removal_timeout_path() {
@@ -988,6 +990,35 @@ validate_path_for_deletion() {
 
     local policy_path
     policy_path=$(_mole_normalize_deletion_policy_path "$path")
+
+    if declare -f mole_local_cleanup_protected > /dev/null 2>&1 &&
+        mole_local_cleanup_protected "$policy_path"; then
+        log_error "Kept by local resource protection: $path"
+        return 1
+    fi
+    case "${MOLE_CURRENT_COMMAND:-}" in
+        clean | purge | installer)
+            local local_probe_rc=0 command_probe_rc=0
+            if [[ -e "$policy_path" ]]; then mole_path_is_local "$policy_path" || local_probe_rc=$?; fi
+            if [[ $local_probe_rc -eq 124 || $local_probe_rc -ge 128 ]]; then
+                _mole_record_clean_cancellation "$local_probe_rc"
+                return "$local_probe_rc"
+            fi
+            if [[ $local_probe_rc -ne 0 ]]; then
+                log_error "Kept: local materialized storage could not be established: $path"
+                return 1
+            fi
+            mole_preserves_command_target "$policy_path" || command_probe_rc=$?
+            if [[ $command_probe_rc -eq 124 || $command_probe_rc -ge 128 ]]; then
+                _mole_record_clean_cancellation "$command_probe_rc"
+                return "$command_probe_rc"
+            fi
+            if [[ $command_probe_rc -ne 1 ]]; then
+                log_error "Kept: path contains a command, or PATH targets could not be inspected: $path"
+                return 1
+            fi
+            ;;
+    esac
 
     # Check symlink target if path is a symbolic link
     if [[ -L "$path" ]]; then

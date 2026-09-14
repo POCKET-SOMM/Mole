@@ -1485,10 +1485,6 @@ _batch_scan_app_details() {
             fi
         fi
 
-        if [[ "$is_brew_cask" == "true" ]]; then
-            brew_cask_apps+=("$app_name")
-        fi
-
         # A Trash rename is authorized by the source and destination parents,
         # not by the app bundle's owner. Do not elevate solely because a
         # package-installed app is root-owned when its parent is user-writable;
@@ -1618,7 +1614,7 @@ _batch_scan_app_details() {
         total_estimated_size=$((total_estimated_size + total_kb))
 
         if [[ "$needs_sudo" == "true" ]]; then
-            sudo_apps+=("$app_name")
+            [[ "$is_brew_cask" == "true" ]] || sudo_apps+=("$app_name")
         fi
 
         # Check for sensitive user data once.
@@ -1688,23 +1684,6 @@ _batch_preview_and_confirm() {
 
     echo -e "\n${PURPLE_BOLD}Files to be removed:${NC}"
 
-    # Warn if brew cask apps are present. The --zap wording only applies to
-    # casks that will actually zap; sibling-guarded casks run a plain
-    # uninstall so their shared configs and data stay.
-    local has_zap_cask=false
-    local zap_detail zap_is_brew zap_guard
-    for zap_detail in "${app_details[@]}"; do
-        IFS='|' read -r _ _ _ _ _ _ _ _ zap_is_brew _ _ _ _ zap_guard _ <<< "$zap_detail"
-        if [[ "$zap_is_brew" == "true" && "${zap_guard:-none}" == "none" ]]; then
-            has_zap_cask=true
-            break
-        fi
-    done
-
-    if [[ "$has_zap_cask" == "true" ]]; then
-        echo -e "${GRAY}${ICON_WARNING} Homebrew apps will be fully cleaned, --zap removes configs and data${NC}"
-    fi
-
     echo ""
 
     for detail in "${app_details[@]}"; do
@@ -1719,6 +1698,12 @@ _batch_preview_and_confirm() {
             app_size_display="N/A (Steam-managed)"
         fi
         echo -e "${BLUE}${ICON_CONFIRM}${NC} ${app_name}${brew_tag} ${GRAY}, ${app_size_display}${NC}"
+
+        if [[ "$is_brew_cask" == true ]]; then
+            printf '  Kept: Homebrew hooks do not expose a complete local mutation plan.\n'
+            printf '  Review this cask with Homebrew separately.\n'
+            continue
+        fi
 
         # Show detailed file list for ALL apps (brew casks leave user data behind)
         local related_files=$(decode_file_list "$encoded_files" "$app_name")
@@ -1801,10 +1786,8 @@ _batch_preview_and_confirm() {
     export MOLE_UNINSTALL_MODE=1
 
     # Establish sudo once before uninstalling apps that need admin access.
-    # Homebrew cask removal can prompt via sudo during uninstall hooks, which
-    # does not work reliably under Mole's timed non-interactive execution path.
     if [[ "${MOLE_DRY_RUN:-0}" != "1" ]] &&
-        { [[ ${#sudo_apps[@]} -gt 0 ]] || [[ ${#brew_cask_apps[@]} -gt 0 ]]; }; then
+        [[ ${#sudo_apps[@]} -gt 0 ]]; then
         local admin_prompt="Admin required to uninstall selected apps"
         if [[ ${#sudo_apps[@]} -gt 0 && ${#brew_cask_apps[@]} -eq 0 ]]; then
             admin_prompt="Admin required for system apps: ${sudo_apps[*]}"
@@ -1847,6 +1830,11 @@ _batch_execute_removals() {
         local login_item_helpers=$(decode_bundle_id_list "$encoded_login_item_helpers" "$app_name")
         local reason=""
         local suggestion=""
+
+        if [[ "$is_brew_cask" == true ]]; then
+            reason="Homebrew uninstall hooks do not expose a complete local mutation plan"
+            suggestion="Review this cask with Homebrew separately; Mole kept the app and its related files"
+        fi
 
         # Show progress before the pre-teardown verification, not after: the
         # same-bundle re-scan below can take tens of seconds on a large
@@ -2668,32 +2656,10 @@ batch_uninstall_applications() {
 
     _batch_render_summary
 
-    # Run brew autoremove silently in background to avoid interrupting UX.
-    if [[ $brew_apps_removed -gt 0 && "${MOLE_DRY_RUN:-0}" != "1" ]]; then
-        # This background job never needs terminal input. Keeping its stdin
-        # attached lets the Perl timeout fallback hand off the controlling tty
-        # and suspend the foreground uninstall prompt with SIGTTIN.
-        (
-            HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_AUTO_UPDATE=1 NONINTERACTIVE=1 \
-                run_with_timeout "$MOLE_TIMEOUT_DISK_VERIFY_SEC" brew autoremove > /dev/null 2>&1 || true
-        ) > /dev/null 2>&1 < /dev/null &
-        disown $! 2> /dev/null || true
-    fi
+    # Package autoremove is outside the selected app plan and is never started.
 
-    # Clean up Dock entries for uninstalled apps.
-    if [[ $success_count -gt 0 && ${#success_dock_targets[@]} -gt 0 ]]; then
-        if is_uninstall_dry_run; then
-            log_info "[DRY RUN] Would refresh LaunchServices and update Dock entries"
-        else
-            # LaunchServices refresh uses run_with_timeout. It is best-effort
-            # background work, so it must never own the tty.
-            (
-                remove_apps_from_dock "${success_dock_targets[@]}" > /dev/null 2>&1 || true
-                refresh_launch_services_after_uninstall > /dev/null 2>&1 || true
-            ) > /dev/null 2>&1 < /dev/null &
-            disown $! 2> /dev/null || true
-        fi
-    fi
+    # Dock and LaunchServices rebuilds are outside the selected file plan.
+    # Existing app-specific unregister/teardown remains guarded per selection.
 
     _cleanup_sudo_keepalive
 
@@ -2706,4 +2672,5 @@ batch_uninstall_applications() {
 
     total_size_cleaned=$((total_size_cleaned + total_size_freed))
     unset failed_items
+    [[ $failed_count -eq 0 ]] || return 3
 }

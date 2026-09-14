@@ -29,7 +29,9 @@ source "$PROJECT_ROOT/lib/core/timeout.sh"
 MO_TIMEOUT_BIN=""
 MO_TIMEOUT_PERL_BIN="/usr/bin/perl"
 
-caller_pgrp=$(ps -o pgid= -p $$ | tr -d ' ')
+# This noninteractive child inherits the caller's process group. Avoid a host
+# process-table probe: macOS can deny the platform ps binary in a sandbox.
+caller_pgrp=$(/usr/bin/perl -e 'print getpgrp()')
 
 export MOLE_TTY_PROBE_MODE="$MODE"
 

@@ -37,14 +37,14 @@ func createInsightEntries() []dirEntry {
 	downloadsPath := filepath.Join(home, "Downloads")
 	if info, err := os.Stat(downloadsPath); err == nil && info.IsDir() {
 		entries = append(entries, dirEntry{
-			Name:  "Old Downloads (90d+)",
+			Name:  "Downloads modified >90d ago",
 			Path:  downloadsPath,
 			IsDir: true,
 			Size:  -1,
 		})
 	}
 
-	// Cleanable paths: things mo clean can remove or the user can safely delete.
+	// Inspection paths: size and age do not establish deletion safety.
 	// System Caches (~Library/Caches) is intentionally omitted here because the
 	// specific cache subdirectories below are already its children; listing both
 	// would double-count the same bytes.

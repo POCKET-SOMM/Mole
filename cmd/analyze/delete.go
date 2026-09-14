@@ -142,6 +142,9 @@ func moveToTrash(path string) error {
 	if err := validateTrashTarget(absPath); err != nil {
 		return err
 	}
+	if err := protectActiveCommandPath(absPath); err != nil {
+		return err
+	}
 
 	if trashErr := moveToTrashViaBinary(absPath); trashErr == nil {
 		return nil
@@ -317,6 +320,9 @@ func isProtectedAnalyzeDeletePath(path string) bool {
 	}
 
 	cleanPath := filepath.Clean(path)
+	if localResourceDeleteProtected(cleanPath) {
+		return true
+	}
 
 	// EDR / Darwin-cache protection is based on the absolute path and does not
 	// depend on HOME, so check it first: an unset HOME must not let a Falcon

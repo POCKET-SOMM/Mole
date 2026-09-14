@@ -32,6 +32,9 @@ set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
 stop_section_spinner() { :; }
+_dropbox_process_state() { return 1; }
+_google_drive_process_state() { return 1; }
+mkdir -p "$HOME/Library/Caches/com.google.GoogleDrive"
 safe_clean() { echo "$2"; }
 clean_cloud_storage
 EOF

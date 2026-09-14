@@ -542,6 +542,7 @@ is_protected_purge_artifact() {
     local base="${path##*/}"
 
     PURGE_PROTECTION_UNVERIFIED=false
+    mole_local_cleanup_protected "$path" && return 0
     local authored_rc=0
     purge_artifact_has_authored_content "$path" || authored_rc=$?
     if [[ $authored_rc -eq 2 ]]; then
@@ -581,6 +582,14 @@ scan_purge_targets() {
     local tag_output="${output_file}.tags"
     local processed_output="${output_file}.processed"
     local error_output="${output_file}.errors"
+    local local_probe_rc=0
+    mole_path_is_local "$search_path" || local_probe_rc=$?
+    if [[ $local_probe_rc -ne 0 ]]; then
+        : > "$output_file"
+        printf 'Could not inspect local storage at %q; kept\n' "$search_path" >&2
+        [[ $local_probe_rc -ne 124 && $local_probe_rc -lt 128 ]] || return "$local_probe_rc"
+        return 2
+    fi
     local min_depth="$PURGE_MIN_DEPTH_DEFAULT"
     local max_depth="$PURGE_MAX_DEPTH_DEFAULT"
     if [[ ! "$min_depth" =~ ^[0-9]+$ ]]; then
@@ -689,6 +698,7 @@ scan_purge_targets() {
         local pattern
         pattern="($(printf '%s\n' "$_escaped_lines" | sed -e 's/^/^/' -e 's/$/$/' | paste -sd '|' -))"
         local fd_args=(
+            "--one-file-system"
             "--absolute-path"
             "--show-errors"
             "--hidden"
@@ -704,6 +714,7 @@ scan_purge_targets() {
             "--exclude" "Applications"
         )
         local fd_tag_args=(
+            "--one-file-system"
             "--absolute-path"
             "--show-errors"
             "--hidden"
@@ -788,7 +799,7 @@ scan_purge_targets() {
         local find_status=0
         scan_stage_timeout=$(_mole_timeout_with_deadline "$scan_timeout" "$scan_deadline") || find_status=$?
         if [[ $find_status -eq 0 ]]; then
-            run_with_timeout "$scan_stage_timeout" find "$search_path" -mindepth "$min_depth" -maxdepth "$max_depth" -type d \
+            run_with_timeout "$scan_stage_timeout" find "$search_path" -xdev -mindepth "$min_depth" -maxdepth "$max_depth" -type d \
                 \( "${prune_expr[@]}" \) -prune -o \
                 \( "${target_expr[@]}" \) -print -prune \
                 2> /dev/null > "$target_output" || find_status=$?
@@ -798,7 +809,7 @@ scan_purge_targets() {
             scan_stage_timeout=$(_mole_timeout_with_deadline "$scan_timeout" "$scan_deadline") || find_status=$?
         fi
         if [[ $find_status -eq 0 ]]; then
-            run_with_timeout "$scan_stage_timeout" find "$search_path" -mindepth "$cachedir_tag_min_depth" -maxdepth "$cachedir_tag_max_depth" \
+            run_with_timeout "$scan_stage_timeout" find "$search_path" -xdev -mindepth "$cachedir_tag_min_depth" -maxdepth "$cachedir_tag_max_depth" \
                 \( -type d \( \( "${prune_expr[@]}" \) -o \( "${target_expr[@]}" \) \) \) -prune -o \
                 -type f -name "$MOLE_CACHEDIR_TAG_NAME" -print \
                 2> /dev/null > "$tag_output" || find_status=$?

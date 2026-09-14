@@ -18,7 +18,7 @@ declare MOLE_INSTALLER_SCAN_MAX_DEPTH
 
 export LC_ALL=C
 export LANG=C
-export MOLE_CURRENT_COMMAND="${MOLE_CURRENT_COMMAND:-installer}"
+export MOLE_CURRENT_COMMAND="installer"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/core/common.sh"
@@ -46,7 +46,6 @@ readonly INSTALLER_SCAN_PATHS=(
     "/Users/Shared"
     "/Users/Shared/Downloads"
     "$HOME/Library/Caches/Homebrew"
-    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Downloads"
     "$HOME/Library/Containers/com.apple.mail/Data/Library/Mail Downloads"
     "$HOME/Library/Application Support/Telegram Desktop"
     "$HOME/Downloads/Telegram Desktop"
@@ -71,7 +70,7 @@ is_installer_zip() {
 
     [[ ${#ZIP_LIST_CMD[@]} -gt 0 ]] || return 1
 
-    if ! "${ZIP_LIST_CMD[@]}" "$zip" 2> /dev/null |
+    if ! run_with_timeout "$MOLE_TIMEOUT_SHORT_QUERY_SEC" "${ZIP_LIST_CMD[@]}" "$zip" 2> /dev/null |
         head -n "$cap" |
         awk '
             /\.(app|pkg|dmg|xip)(\/|$)/ { found=1; exit 0 }
@@ -87,6 +86,10 @@ handle_candidate_file() {
     local file="$1"
 
     [[ -L "$file" ]] && return 0 # Skip symlinks explicitly
+    local local_probe_rc=0
+    mole_path_is_local "$file" || local_probe_rc=$?
+    [[ $local_probe_rc -ne 124 && $local_probe_rc -lt 128 ]] || return "$local_probe_rc"
+    [[ $local_probe_rc -eq 0 ]] || return 0
     case "$file" in
         *.dmg | *.pkg | *.mpkg | *.iso | *.xip)
             echo "$file"
@@ -105,32 +108,42 @@ scan_installers_in_path() {
     local max_depth="${MOLE_INSTALLER_SCAN_MAX_DEPTH:-$INSTALLER_SCAN_MAX_DEPTH_DEFAULT}"
 
     [[ -d "$path" ]] || return 0
+    local local_probe_rc=0
+    mole_path_is_local "$path" || local_probe_rc=$?
+    if [[ $local_probe_rc -ne 0 ]]; then
+        printf 'Could not inspect local installer root %q; kept\n' "$path" >&2
+        [[ $local_probe_rc -ne 124 && $local_probe_rc -lt 128 ]] || return "$local_probe_rc"
+        return 2
+    fi
 
-    local file
+    local file raw errors rc=0 duration
+    local _MOLE_INSTALLER_SCAN_DEADLINE="${_MOLE_INSTALLER_SCAN_DEADLINE:-$((SECONDS + 30))}"
+    raw=$(create_temp_file) || return 1
+    errors=$(create_temp_file) || return 1
+    duration=$(_mole_timeout_with_deadline 15 "$_MOLE_INSTALLER_SCAN_DEADLINE") || return $?
 
     if command -v fd > /dev/null 2>&1; then
-        while IFS= read -r file; do
-            handle_candidate_file "$file"
-        done < <(
-            fd --no-ignore --hidden --type f --max-depth "$max_depth" \
-                -e dmg -e pkg -e mpkg -e iso -e xip -e zip \
-                . "$path" 2> /dev/null || true
-        )
+        run_with_timeout "$duration" fd --no-ignore --hidden --show-errors --one-file-system --print0 --type f --max-depth "$max_depth" \
+            -e dmg -e pkg -e mpkg -e iso -e xip -e zip \
+            . "$path" > "$raw" 2> "$errors" || rc=$?
+        if [[ $rc -eq 0 && -s "$errors" ]]; then rc=2; fi
     else
-        while IFS= read -r file; do
-            handle_candidate_file "$file"
-        done < <(
-            find "$path" -maxdepth "$max_depth" -type f \
-                \( -name '*.dmg' -o -name '*.pkg' -o -name '*.mpkg' \
-                -o -name '*.iso' -o -name '*.xip' -o -name '*.zip' \) \
-                2> /dev/null || true
-        )
+        run_with_timeout "$duration" find "$path" -xdev -maxdepth "$max_depth" -type f \
+            \( -name '*.dmg' -o -name '*.pkg' -o -name '*.mpkg' \
+            -o -name '*.iso' -o -name '*.xip' -o -name '*.zip' \) \
+            -print0 > "$raw" 2> /dev/null || rc=$?
     fi
+    [[ $rc -eq 0 ]] || return "$rc"
+    while IFS= read -r -d '' file; do
+        [[ $SECONDS -lt $_MOLE_INSTALLER_SCAN_DEADLINE ]] || return 124
+        handle_candidate_file "$file" || return $?
+    done < "$raw"
 }
 
 scan_all_installers() {
+    local _MOLE_INSTALLER_SCAN_DEADLINE="${_MOLE_INSTALLER_SCAN_DEADLINE:-$((SECONDS + 30))}"
     for path in "${INSTALLER_SCAN_PATHS[@]}"; do
-        scan_installers_in_path "$path"
+        scan_installers_in_path "$path" || return $?
     done
 }
 
@@ -218,6 +231,7 @@ format_installer_display() {
 
 # Collect all installers with their metadata
 collect_installers() {
+    local _MOLE_INSTALLER_SCAN_DEADLINE=$((SECONDS + 30))
     # Clear previous results
     INSTALLER_PATHS=()
     INSTALLER_SIZES=()
@@ -234,12 +248,26 @@ collect_installers() {
 
     # Scan all paths, deduplicate, and sort results
     local -a all_files=()
+    local completed_scan scan_rc=0
+    completed_scan=$(create_temp_file) || {
+        stop_inline_spinner
+        printf 'Installer scan could not create its local result file; no candidates selected.\n' >&2
+        return 3
+    }
+    scan_all_installers > "$completed_scan" || scan_rc=$?
+    if [[ $scan_rc -ne 0 ]]; then
+        stop_inline_spinner
+        printf 'Installer scan incomplete (status %s); no candidates selected.\n' "$scan_rc" >&2
+        # 1 means a completed empty scan to perform_installers, never failure.
+        [[ $scan_rc -ne 1 ]] || scan_rc=3
+        return "$scan_rc"
+    fi
 
     while IFS= read -r file; do
         [[ -z "$file" ]] && continue
         all_files+=("$file")
         debug_file_action "Found installer" "$file"
-    done < <(scan_all_installers | sort -u)
+    done < <(sort -u "$completed_scan")
 
     if [[ -t 1 ]]; then
         stop_inline_spinner
@@ -259,6 +287,12 @@ collect_installers() {
 
     # Process each installer
     for file in "${all_files[@]}"; do
+        if [[ $SECONDS -ge $_MOLE_INSTALLER_SCAN_DEADLINE ]]; then
+            INSTALLER_PATHS=() INSTALLER_SIZES=() INSTALLER_SOURCES=() DISPLAY_NAMES=()
+            stop_inline_spinner
+            printf 'Installer metadata scan timed out; no candidates selected.\n' >&2
+            return 124
+        fi
         # Calculate file size
         local file_size=0
         if [[ -f "$file" ]]; then
@@ -726,10 +760,16 @@ perform_installers() {
     fi
 
     # Collect installers
-    if ! collect_installers; then
+    local collect_rc=0
+    collect_installers || collect_rc=$?
+    if [[ $collect_rc -ne 0 ]]; then
         if [[ -t 1 ]]; then
             leave_alt_screen
             IN_ALT_SCREEN=0
+        fi
+        if [[ $collect_rc -ne 1 ]]; then
+            [[ $collect_rc -ne 2 ]] || collect_rc=3
+            return "$collect_rc"
         fi
         printf '\n'
         echo -e "${GREEN}${ICON_SUCCESS}${NC} Great! No installer files to clean"
@@ -862,6 +902,7 @@ main() {
         2)
             # Already handled by collect_installers
             ;;
+        *) return "$exit_code" ;;
     esac
 
     return 0

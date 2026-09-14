@@ -7,7 +7,7 @@
 brew install shfmt shellcheck bats-core golangci-lint
 
 # Install goimports for better Go formatting
-go install golang.org/x/tools/cmd/goimports@latest
+go install golang.org/x/tools/cmd/goimports@v0.49.0
 
 # Install pre-commit hook (runs format/lint checks on every commit)
 git config core.hooksPath .githooks
@@ -21,11 +21,13 @@ Run quality checks before committing (auto-formats code):
 ./scripts/check.sh
 ```
 
-Run tests:
+Run tests through the macOS sandbox (a fake HOME or no-auth flag alone is insufficient):
 
 ```bash
-./scripts/test.sh
+TERM=xterm-256color MOLE_TEST_NO_AUTH=1 MOLE_SKIP_FINDER_TESTS=1 ./scripts/test.sh
 ```
+
+For individual Bats or Go checks, prefix the command with `bash scripts/test_sandbox.sh`.
 
 ## Code Style
 
@@ -164,7 +166,8 @@ go run ./cmd/analyze
 go run ./cmd/status
 ```
 
-For releases, GitHub Actions builds architecture-specific binaries automatically.
+This fork has read-only verification CI and no release publisher. Manual cross-build
+targets create local files only and require prepared modules. See [fork CI policy](docs/FORK_CI.md).
 
 **Guidelines:**
 

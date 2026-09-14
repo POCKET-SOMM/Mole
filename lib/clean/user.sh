@@ -689,6 +689,9 @@ clean_chrome_old_versions() {
     local -a app_paths
     if [[ -n "${MOLE_CHROME_APP_PATHS:-}" ]]; then
         IFS=':' read -ra app_paths <<< "$MOLE_CHROME_APP_PATHS"
+    elif [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        # HOME isolation does not isolate /Applications. Tests must supply fixtures.
+        return 0
     else
         app_paths=(
             "/Applications/Google Chrome.app"
@@ -705,6 +708,8 @@ clean_edge_old_versions() {
     local -a app_paths
     if [[ -n "${MOLE_EDGE_APP_PATHS:-}" ]]; then
         IFS=':' read -ra app_paths <<< "$MOLE_EDGE_APP_PATHS"
+    elif [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        return 0
     else
         app_paths=(
             "/Applications/Microsoft Edge.app"
@@ -854,6 +859,8 @@ clean_brave_old_versions() {
     local -a app_paths
     if [[ -n "${MOLE_BRAVE_APP_PATHS:-}" ]]; then
         IFS=':' read -ra app_paths <<< "$MOLE_BRAVE_APP_PATHS"
+    elif [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        return 0
     else
         app_paths=(
             "/Applications/Brave Browser.app"

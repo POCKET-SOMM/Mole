@@ -1,52 +1,60 @@
 #!/usr/bin/env bats
+# Fixture source must retain variables for the child updater to expand.
+# shellcheck disable=SC2016
 
 setup_file() {
-	PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
-	export PROJECT_ROOT
+    PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+    export PROJECT_ROOT
 }
 
 setup() {
-	HOME="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-update-home.XXXXXX")"
-	TEST_ROOT="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-update-case.XXXXXX")"
-	export HOME TEST_ROOT
+    HOME="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-update-home.XXXXXX")"
+    TEST_ROOT="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-update-case.XXXXXX")"
+    export HOME TEST_ROOT
 }
 
 teardown() {
-	case "${HOME:-}" in
-		"${BATS_TEST_DIRNAME}/tmp-update-home."*) rm -rf "$HOME" ;;
-	esac
-	case "${TEST_ROOT:-}" in
-		"${BATS_TEST_DIRNAME}/tmp-update-case."*) rm -rf "$TEST_ROOT" ;;
-	esac
+    case "${HOME:-}" in
+        "${BATS_TEST_DIRNAME}/tmp-update-home."*) rm -rf "$HOME" ;;
+    esac
+    case "${TEST_ROOT:-}" in
+        "${BATS_TEST_DIRNAME}/tmp-update-case."*) rm -rf "$TEST_ROOT" ;;
+    esac
 }
 
+# Legacy updater regression fixtures deliberately expose the archived updater.
+# Production CLI routing is separately pinned by local_hardening.bats.
+# Stable release fixtures use their own numeric version; a fork prerelease
+# suffix must not change the archived updater protocol under test.
 make_manual_mole_install() {
-	local install_dir="$1"
-	local config_dir="$2"
-	local version="$3"
-	mkdir -p "$install_dir" "$config_dir/bin"
-	sed \
-		-e "s|^SCRIPT_DIR=.*|SCRIPT_DIR=\"$config_dir\"|" \
-		-e "s/^VERSION=\".*\"$/VERSION=\"$version\"/" \
-		"$PROJECT_ROOT/mole" > "$install_dir/mole"
-	cp "$PROJECT_ROOT/mo" "$install_dir/mo"
-	cp -R "$PROJECT_ROOT/lib" "$config_dir/lib"
-	printf '#!/bin/bash\nexit 0\n' > "$config_dir/bin/analyze-go"
-	printf '#!/bin/bash\nexit 0\n' > "$config_dir/bin/status-go"
-	chmod +x "$install_dir/mole" "$install_dir/mo" "$config_dir/bin/analyze-go" "$config_dir/bin/status-go"
+    local install_dir="$1"
+    local config_dir="$2"
+    local version="$3"
+    mkdir -p "$install_dir" "$config_dir/bin"
+    sed \
+        -e "s|^SCRIPT_DIR=.*|SCRIPT_DIR=\"$config_dir\"|" \
+        -e 's/mole_local_update_notice/update_mole "${force_update:-false}" "${nightly_update:-false}"/' \
+        -e "s/^VERSION=\".*\"$/VERSION=\"$version\"/" \
+        "$PROJECT_ROOT/mole" > "$install_dir/mole"
+    cp "$PROJECT_ROOT/mo" "$install_dir/mo"
+    cp -R "$PROJECT_ROOT/lib" "$config_dir/lib"
+    cat "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh" >> "$config_dir/lib/manage/update.sh"
+    printf '#!/bin/bash\nexit 0\n' > "$config_dir/bin/analyze-go"
+    printf '#!/bin/bash\nexit 0\n' > "$config_dir/bin/status-go"
+    chmod +x "$install_dir/mole" "$install_dir/mo" "$config_dir/bin/analyze-go" "$config_dir/bin/status-go"
 }
 
 make_homebrew_shadow() {
-	local bin_dir="$1"
-	local cellar_mole="$2"
-	mkdir -p "$bin_dir" "$(dirname "$cellar_mole")"
-	cp "$PROJECT_ROOT/mole" "$cellar_mole"
-	cp -R "$PROJECT_ROOT/lib" "$bin_dir/lib"
-	chmod +x "$cellar_mole"
-	ln -sf "$cellar_mole" "$bin_dir/mole"
-	ln -sf "$cellar_mole" "$bin_dir/mo"
+    local bin_dir="$1"
+    local cellar_mole="$2"
+    mkdir -p "$bin_dir" "$(dirname "$cellar_mole")"
+    sed 's/mole_local_update_notice/update_mole "${force_update:-false}" "${nightly_update:-false}"/' "$PROJECT_ROOT/mole" > "$cellar_mole"
+    cp -R "$PROJECT_ROOT/lib" "$bin_dir/lib"
+    chmod +x "$cellar_mole"
+    ln -sf "$cellar_mole" "$bin_dir/mole"
+    ln -sf "$cellar_mole" "$bin_dir/mo"
 
-	cat > "$bin_dir/brew" << 'SCRIPT'
+    cat > "$bin_dir/brew" << 'SCRIPT'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$BREW_LOG"
 case "${1:-}" in
@@ -68,13 +76,13 @@ case "${1:-}" in
 esac
 exit 0
 SCRIPT
-	chmod +x "$bin_dir/brew"
+    chmod +x "$bin_dir/brew"
 }
 
 make_update_curl_stub() {
-	local bin_dir="$1"
-	local latest_version="$2"
-	cat > "$bin_dir/curl" << SCRIPT
+    local bin_dir="$1"
+    local latest_version="$2"
+    cat > "$bin_dir/curl" << SCRIPT
 #!/usr/bin/env bash
 out=""
 url=""
@@ -147,13 +155,13 @@ fi
 
 printf 'VERSION="%s"\n' "$latest_version"
 SCRIPT
-	chmod +x "$bin_dir/curl"
+    chmod +x "$bin_dir/curl"
 }
 
 make_nightly_update_curl_stub() {
-	local bin_dir="$1"
-	local latest_commit="$2"
-	cat > "$bin_dir/curl" << SCRIPT
+    local bin_dir="$1"
+    local latest_commit="$2"
+    cat > "$bin_dir/curl" << SCRIPT
 #!/usr/bin/env bash
 out=""
 url=""
@@ -215,13 +223,13 @@ fi
 
 exit 1
 SCRIPT
-	chmod +x "$bin_dir/curl"
+    chmod +x "$bin_dir/curl"
 }
 
 make_nightly_api_failure_stubs() {
-	local bin_dir="$1"
-	local latest_commit="${2:-}"
-	cat > "$bin_dir/curl" <<'SCRIPT'
+    local bin_dir="$1"
+    local latest_commit="${2:-}"
+    cat > "$bin_dir/curl" << 'SCRIPT'
 #!/usr/bin/env bash
 out=""
 url=""
@@ -272,7 +280,7 @@ fi
 
 exit 22
 SCRIPT
-	cat > "$bin_dir/git" <<SCRIPT
+    cat > "$bin_dir/git" << SCRIPT
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "\$GIT_ARGS_LOG"
 if [[ -n "\${GIT_CONFIG_PARAMETERS:-}" || -n "\${GIT_EXEC_PATH:-}" ]]; then
@@ -296,306 +304,307 @@ if [[ -n "$latest_commit" ]]; then
 fi
 exit 1
 SCRIPT
-	chmod +x "$bin_dir/curl" "$bin_dir/git"
+    chmod +x "$bin_dir/curl" "$bin_dir/git"
 }
 
-@test "mo update repairs missing helpers at the current stable version (#1193)" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local current_version
+@test "legacy updater repairs missing helpers at the current stable version (#1193)" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "$current_version"
-	make_update_curl_stub "$fake_bin" "$current_version"
-	rm -f "$manual_config/bin/analyze-go"
-	touch "$manual_config/.helper_install_incomplete"
-	: > "$curl_url_log"
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "$current_version"
+    make_update_curl_stub "$fake_bin" "$current_version"
+    rm -f "$manual_config/bin/analyze-go"
+    touch "$manual_config/.helper_install_incomplete"
+    : > "$curl_url_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Mole installation needs repair"* ]] || return 1
-	[[ "$output" == *"missing analyze-go"* ]] || return 1
-	[ -f "$installer_args_log" ]
-	if grep -q -- "--update" "$installer_args_log"; then
-		return 1
-	fi
-	[ "$(cat "$installer_version_log")" = "V$current_version" ]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Mole installation needs repair"* ]] || return 1
+    [[ "$output" == *"missing analyze-go"* ]] || return 1
+    [ -f "$installer_args_log" ]
+    if grep -q -- "--update" "$installer_args_log"; then
+        return 1
+    fi
+    [ "$(cat "$installer_version_log")" = "V$current_version" ]
 }
 
-@test "mo update retries transient installer download failures" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local curl_attempt_log="$TEST_ROOT/curl.attempts"
-	local current_version
+@test "legacy updater retries transient installer download failures" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local curl_attempt_log="$TEST_ROOT/curl.attempts"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	make_update_curl_stub "$fake_bin" "$current_version"
-	printf '#!/bin/bash\nexit 0\n' > "$fake_bin/sleep"
-	chmod +x "$fake_bin/sleep"
-	: > "$curl_url_log"
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    make_update_curl_stub "$fake_bin" "$current_version"
+    printf '#!/bin/bash\nexit 0\n' > "$fake_bin/sleep"
+    chmod +x "$fake_bin/sleep"
+    : > "$curl_url_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		CURL_ATTEMPT_LOG="$curl_attempt_log" \
-		CURL_TRANSIENT_FAILURES=2 \
-		CURL_TRANSIENT_STATUS=35 \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        CURL_ATTEMPT_LOG="$curl_attempt_log" \
+        CURL_TRANSIENT_FAILURES=2 \
+        CURL_TRANSIENT_STATUS=35 \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -eq 0 ] || return 1
-	[ -f "$installer_args_log" ] || return 1
-	[ "$(cat "$curl_attempt_log")" -eq 3 ] || return 1
-	[ "$(cat "$installer_version_log")" = "V$current_version" ]
+    [ "$status" -eq 0 ] || return 1
+    [ -f "$installer_args_log" ] || return 1
+    [ "$(cat "$curl_attempt_log")" -eq 3 ] || return 1
+    [ "$(cat "$installer_version_log")" = "V$current_version" ]
 }
 
-@test "mo update reports unreachable version discovery instead of exiting silently" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_attempt_log="$TEST_ROOT/discovery.attempts"
+@test "legacy updater reports unreachable version discovery instead of exiting silently" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_attempt_log="$TEST_ROOT/discovery.attempts"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
 
-	# Every request fails the way a flaky local proxy fails. Version discovery
-	# runs inside `latest=$(...)`, so before the fix the nonzero pipeline tripped
-	# errexit and killed `mo update` with an empty screen and no diagnosis.
-	cat > "$fake_bin/curl" << 'SCRIPT'
+    # Every request fails the way a flaky local proxy fails. Version discovery
+    # runs inside `latest=$(...)`, so before the fix the nonzero pipeline tripped
+    # errexit and killed `mo update` with an empty screen and no diagnosis.
+    cat > "$fake_bin/curl" << 'SCRIPT'
 #!/usr/bin/env bash
 printf 'x\n' >> "$CURL_ATTEMPT_LOG"
 exit 28
 SCRIPT
-	printf '#!/bin/bash\nexit 0\n' > "$fake_bin/sleep"
-	chmod +x "$fake_bin/curl" "$fake_bin/sleep"
+    printf '#!/bin/bash\nexit 0\n' > "$fake_bin/sleep"
+    chmod +x "$fake_bin/curl" "$fake_bin/sleep"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_ATTEMPT_LOG="$curl_attempt_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_ATTEMPT_LOG="$curl_attempt_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -eq 1 ] || return 1
-	[[ "$output" == *"Unable to check for updates"* ]] || return 1
-	[[ "$output" == *"https://github.com"* ]] || return 1
-	# The bounded retry must not run behind a blank screen.
-	[[ "$output" == *"Checking for updates"* ]] || return 1
-	# Two endpoints per round, three bounded rounds.
-	[ "$(wc -l < "$curl_attempt_log" | tr -d ' ')" -eq 6 ]
+    [ "$status" -eq 1 ] || return 1
+    [[ "$output" == *"Unable to check for updates"* ]] || return 1
+    [[ "$output" == *"https://github.com"* ]] || return 1
+    # The bounded retry must not run behind a blank screen.
+    [[ "$output" == *"Checking for updates"* ]] || return 1
+    # Two endpoints per round, three bounded rounds.
+    [ "$(wc -l < "$curl_attempt_log" | tr -d ' ')" -eq 6 ]
 }
 
-@test "mo update announces the check before the bounded retry, not after it" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_attempt_log="$TEST_ROOT/announce.attempts"
-	local out_file="$TEST_ROOT/announce.out"
+@test "legacy updater announces the check before the bounded retry, not after it" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_attempt_log="$TEST_ROOT/announce.attempts"
+    local out_file="$TEST_ROOT/announce.out"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	cat > "$fake_bin/curl" << 'SCRIPT'
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    cat > "$fake_bin/curl" << 'SCRIPT'
 #!/usr/bin/env bash
 printf 'x\n' >> "$CURL_ATTEMPT_LOG"
 exit 28
 SCRIPT
-	chmod +x "$fake_bin/curl"
-	: > "$out_file"
-	: > "$curl_attempt_log"
+    chmod +x "$fake_bin/curl"
+    : > "$out_file"
+    : > "$curl_attempt_log"
 
-	# Sampled mid-flight on purpose. Asserting the final output cannot tell an
-	# announcement before the retry loop from one after it, which is the whole
-	# point: three rounds of failing requests behind a blank screen is the
-	# "looks hung" report this retry was added for. `sleep` is deliberately not
-	# stubbed here, so the resolver's real 1s pause between rounds leaves a wide
-	# sampling window.
-	env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_ATTEMPT_LOG="$curl_attempt_log" \
-		"$manual_bin/mo" update > "$out_file" 2>&1 &
-	local update_pid=$!
+    # Sampled mid-flight on purpose. Asserting the final output cannot tell an
+    # announcement before the retry loop from one after it, which is the whole
+    # point: three rounds of failing requests behind a blank screen is the
+    # "looks hung" report this retry was added for. `sleep` is deliberately not
+    # stubbed here, so the resolver's real 1s pause between rounds leaves a wide
+    # sampling window.
+    env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_ATTEMPT_LOG="$curl_attempt_log" \
+        "$manual_bin/mo" update > "$out_file" 2>&1 &
+    local update_pid=$!
 
-	local waited=0
-	while [[ "$(wc -l < "$curl_attempt_log" 2> /dev/null || echo 0)" -lt 2 ]]; do
-		sleep 0.05
-		waited=$((waited + 1))
-		if [[ "$waited" -gt 200 ]]; then
-			break
-		fi
-	done
+    local waited=0
+    while [[ "$(wc -l < "$curl_attempt_log" 2> /dev/null || echo 0)" -lt 2 ]]; do
+        sleep 0.05
+        waited=$((waited + 1))
+        if [[ "$waited" -gt 200 ]]; then
+            break
+        fi
+    done
 
-	local mid_output
-	mid_output=$(cat "$out_file")
-	wait "$update_pid" || true
+    local mid_output
+    mid_output=$(cat "$out_file")
+    wait "$update_pid" || true
 
-	# Round one is done but the resolver has not finished: the label must already
-	# be visible, and the final verdict must not be.
-	[[ "$mid_output" == *"Checking for updates"* ]] || return 1
-	[[ "$mid_output" != *"Unable to check for updates"* ]]
+    # Round one is done but the resolver has not finished: the label must already
+    # be visible, and the final verdict must not be.
+    [[ "$mid_output" == *"Checking for updates"* ]] || return 1
+    [[ "$mid_output" != *"Unable to check for updates"* ]]
 }
 
-@test "mo update targets the invoked manual install, not another Homebrew mole in PATH" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_brew_bin="$TEST_ROOT/homebrew/bin"
-	local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
-	local brew_log="$TEST_ROOT/brew.log"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local current_version
-	local stale_version="0.0.1"
+@test "legacy updater targets the invoked manual install, not another Homebrew mole in PATH" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_brew_bin="$TEST_ROOT/homebrew/bin"
+    local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
+    local brew_log="$TEST_ROOT/brew.log"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local current_version
+    local stale_version="0.0.1"
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	make_manual_mole_install "$manual_bin" "$manual_config" "$stale_version"
-	make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
-	make_update_curl_stub "$fake_brew_bin" "$current_version"
-	: > "$brew_log"
-	: > "$curl_url_log"
+    current_version="1.54.0"
+    make_manual_mole_install "$manual_bin" "$manual_config" "$stale_version"
+    make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
+    make_update_curl_stub "$fake_brew_bin" "$current_version"
+    : > "$brew_log"
+    : > "$curl_url_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_brew_bin:/usr/bin:/bin" \
-		BREW_LOG="$brew_log" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_brew_bin:/usr/bin:/bin" \
+        BREW_LOG="$brew_log" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -eq 0 ]
-	[ -f "$installer_args_log" ]
-	grep -q -- "--prefix" "$installer_args_log"
-	grep -q -- "$manual_bin" "$installer_args_log"
-	[ "$(cat "$installer_version_log")" = "V$current_version" ]
-	grep -q "raw.githubusercontent.com/tw93/mole/V${current_version#V}/install.sh" "$curl_url_log"
-	if grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"; then
-		return 1
-	fi
-	if grep -q '^upgrade mole$' "$brew_log"; then
-		return 1
-	fi
+    [ "$status" -eq 0 ]
+    [ -f "$installer_args_log" ]
+    grep -q -- "--prefix" "$installer_args_log"
+    grep -q -- "$manual_bin" "$installer_args_log"
+    [ "$(cat "$installer_version_log")" = "V$current_version" ]
+    grep -q "raw.githubusercontent.com/tw93/mole/V${current_version#V}/install.sh" "$curl_url_log"
+    if grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"; then
+        return 1
+    fi
+    if grep -q '^upgrade mole$' "$brew_log"; then
+        return 1
+    fi
 }
 
-@test "mo update --nightly skips reinstall when the installed commit is current" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+@test "legacy updater --nightly skips reinstall when the installed commit is current" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_update_curl_stub "$fake_bin" "$latest_commit"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
-	: > "$curl_url_log"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_update_curl_stub "$fake_bin" "$latest_commit"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
+    : > "$curl_url_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		"$manual_bin/mo" update --nightly
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Already on latest nightly, e31d46f"* ]] || return 1
-	[ ! -e "$installer_args_log" ]
-	grep -q "api.github.com/repos/tw93/mole/commits/main" "$curl_url_log"
-	if grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"; then
-		return 1
-	fi
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Already on latest nightly, e31d46f"* ]] || return 1
+    [ ! -e "$installer_args_log" ]
+    grep -q "api.github.com/repos/tw93/mole/commits/main" "$curl_url_log"
+    if grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"; then
+        return 1
+    fi
 }
 
-@test "mo update --nightly falls back to git when the commit API is unavailable" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local git_args_log="$TEST_ROOT/git.args"
-	local git_env_log="$TEST_ROOT/git.env"
-	local git_poison_log="$TEST_ROOT/git.poison"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+@test "legacy updater --nightly falls back to git when the commit API is unavailable" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local git_args_log="$TEST_ROOT/git.args"
+    local git_env_log="$TEST_ROOT/git.env"
+    local git_poison_log="$TEST_ROOT/git.poison"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
-	: > "$curl_url_log"
-	: > "$git_args_log"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
+    : > "$curl_url_log"
+    : > "$git_args_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		GIT_ARGS_LOG="$git_args_log" \
-		GIT_ENV_LOG="$git_env_log" \
-		GIT_POISON_LOG="$git_poison_log" \
-		GIT_CONFIG_PARAMETERS=poison-rewrite \
-		GIT_EXEC_PATH="$TEST_ROOT/untrusted-git-exec" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		"$manual_bin/mo" update --nightly
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        GIT_ARGS_LOG="$git_args_log" \
+        GIT_ENV_LOG="$git_env_log" \
+        GIT_POISON_LOG="$git_poison_log" \
+        GIT_CONFIG_PARAMETERS=poison-rewrite \
+        GIT_EXEC_PATH="$TEST_ROOT/untrusted-git-exec" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"Already on latest nightly, e31d46f"* ]] || return 1
-	[ ! -e "$installer_args_log" ] || return 1
-	[ ! -e "$git_poison_log" ] || return 1
-	grep -qF 'ls-remote https://github.com/tw93/mole.git refs/heads/main' "$git_args_log" || return 1
-	[ "$(cat "$git_env_log")" = '0|/usr/bin/false|/usr/bin/false|1|/dev/null|0|C' ] || return 1
-	grep -qF -- '-c credential.helper= -c core.askPass=/usr/bin/false' "$git_args_log" || return 1
-	grep -qF -- '-c protocol.allow=never -c protocol.https.allow=always -c http.sslVerify=true -C /' "$git_args_log" || return 1
-	if grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log"; then
-		return 1
-	fi
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"Already on latest nightly, e31d46f"* ]] || return 1
+    [ ! -e "$installer_args_log" ] || return 1
+    [ ! -e "$git_poison_log" ] || return 1
+    grep -qF 'ls-remote https://github.com/tw93/mole.git refs/heads/main' "$git_args_log" || return 1
+    [ "$(cat "$git_env_log")" = '0|/usr/bin/false|/usr/bin/false|1|/dev/null|0|C' ] || return 1
+    grep -qF -- '-c credential.helper= -c core.askPass=/usr/bin/false' "$git_args_log" || return 1
+    grep -qF -- '-c protocol.allow=never -c protocol.https.allow=always -c http.sslVerify=true -C /' "$git_args_log" || return 1
+    if grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log"; then
+        return 1
+    fi
 }
 
 @test "background nightly checks skip the git fallback while explicit lookups retain it" {
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local git_args_log="$TEST_ROOT/git.args"
-	local lookup_scope_log="$TEST_ROOT/lookup.scope"
-	local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local git_args_log="$TEST_ROOT/git.args"
+    local lookup_scope_log="$TEST_ROOT/lookup.scope"
+    local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
-	: > "$curl_url_log"
-	: > "$git_args_log"
+    mkdir -p "$fake_bin"
+    make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
+    : > "$curl_url_log"
+    : > "$git_args_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		PROJECT_ROOT="$PROJECT_ROOT" \
-		LATEST_COMMIT="$latest_commit" \
-		CURL_URL_LOG="$curl_url_log" \
-		GIT_ARGS_LOG="$git_args_log" \
-		LOOKUP_SCOPE_LOG="$lookup_scope_log" \
-		/bin/bash --noprofile --norc << 'INNER'
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        PROJECT_ROOT="$PROJECT_ROOT" \
+        LATEST_COMMIT="$latest_commit" \
+        CURL_URL_LOG="$curl_url_log" \
+        GIT_ARGS_LOG="$git_args_log" \
+        LOOKUP_SCOPE_LOG="$lookup_scope_log" \
+        /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config"
 source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 background_commit=$(get_latest_commit_from_github api-only)
 [[ -z "$background_commit" ]] || exit 1
@@ -625,216 +634,216 @@ done
 [[ "$(cat "$LOOKUP_SCOPE_LOG")" == "api-only" ]] || exit 1
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
-@test "mo update --nightly refuses an unforced reinstall when HEAD is unknown" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local git_args_log="$TEST_ROOT/git.args"
-	local installer_args_log="$TEST_ROOT/installer.args"
+@test "legacy updater --nightly refuses an unforced reinstall when HEAD is unknown" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local git_args_log="$TEST_ROOT/git.args"
+    local installer_args_log="$TEST_ROOT/installer.args"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_api_failure_stubs "$fake_bin" ""
-	printf 'CHANNEL=nightly\n' > "$manual_config/install_channel"
-	: > "$curl_url_log"
-	: > "$git_args_log"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_api_failure_stubs "$fake_bin" ""
+    printf 'CHANNEL=nightly\n' > "$manual_config/install_channel"
+    : > "$curl_url_log"
+    : > "$git_args_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		GIT_ARGS_LOG="$git_args_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		"$manual_bin/mo" update --nightly
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        GIT_ARGS_LOG="$git_args_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -eq 1 ] || return 1
-	[[ "$output" == *"Unable to resolve latest nightly commit"* ]] || return 1
-	[[ "$output" == *"mo update --nightly --force"* ]] || return 1
-	[ ! -e "$installer_args_log" ] || return 1
-	grep -qF 'ls-remote https://github.com/tw93/mole.git refs/heads/main' "$git_args_log" || return 1
-	if grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log"; then
-		return 1
-	fi
+    [ "$status" -eq 1 ] || return 1
+    [[ "$output" == *"Unable to resolve latest nightly commit"* ]] || return 1
+    [[ "$output" == *"mo update --nightly --force"* ]] || return 1
+    [ ! -e "$installer_args_log" ] || return 1
+    grep -qF 'ls-remote https://github.com/tw93/mole.git refs/heads/main' "$git_args_log" || return 1
+    if grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log"; then
+        return 1
+    fi
 }
 
-@test "mo update --nightly rejects partial output from a failed or timed-out git probe" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local git_args_log="$TEST_ROOT/git.args"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local latest_commit="f42c0debbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-	local mode start elapsed
+@test "legacy updater --nightly rejects partial output from a failed or timed-out git probe" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local git_args_log="$TEST_ROOT/git.args"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local latest_commit="f42c0debbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    local mode start elapsed
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\n' > "$manual_config/install_channel"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\n' > "$manual_config/install_channel"
 
-	for mode in nonzero hang; do
-		: > "$curl_url_log"
-		: > "$git_args_log"
-		rm -f "$installer_args_log"
-		start=$SECONDS
-		run env \
-			HOME="$HOME" \
-			PATH="$fake_bin:/usr/bin:/bin" \
-			MOLE_TIMEOUT_MEDIUM_PROBE_SEC=0.2 \
-			GIT_STUB_MODE="$mode" \
-			CURL_URL_LOG="$curl_url_log" \
-			GIT_ARGS_LOG="$git_args_log" \
-			INSTALLER_ARGS_LOG="$installer_args_log" \
-			"$manual_bin/mo" update --nightly
-		elapsed=$((SECONDS - start))
+    for mode in nonzero hang; do
+        : > "$curl_url_log"
+        : > "$git_args_log"
+        rm -f "$installer_args_log"
+        start=$SECONDS
+        run env \
+            HOME="$HOME" \
+            PATH="$fake_bin:/usr/bin:/bin" \
+            MOLE_TIMEOUT_MEDIUM_PROBE_SEC=0.2 \
+            GIT_STUB_MODE="$mode" \
+            CURL_URL_LOG="$curl_url_log" \
+            GIT_ARGS_LOG="$git_args_log" \
+            INSTALLER_ARGS_LOG="$installer_args_log" \
+            "$manual_bin/mo" update --nightly
+        elapsed=$((SECONDS - start))
 
-		[ "$status" -eq 1 ] || return 1
-		[[ "$output" == *"Unable to resolve latest nightly commit"* ]] || return 1
-		[ ! -e "$installer_args_log" ] || return 1
-		[ "$elapsed" -lt 5 ] || return 1
-	done
+        [ "$status" -eq 1 ] || return 1
+        [[ "$output" == *"Unable to resolve latest nightly commit"* ]] || return 1
+        [ ! -e "$installer_args_log" ] || return 1
+        [ "$elapsed" -lt 5 ] || return 1
+    done
 }
 
-@test "mo update --nightly forwards the git-resolved commit to the installer" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local git_args_log="$TEST_ROOT/git.args"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_commit_log="$TEST_ROOT/installer.commit"
-	local latest_commit="f42c0debbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+@test "legacy updater --nightly forwards the git-resolved commit to the installer" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local git_args_log="$TEST_ROOT/git.args"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_commit_log="$TEST_ROOT/installer.commit"
+    local latest_commit="f42c0debbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\n' > "$manual_config/install_channel"
-	: > "$curl_url_log"
-	: > "$git_args_log"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_api_failure_stubs "$fake_bin" "$latest_commit"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\n' > "$manual_config/install_channel"
+    : > "$curl_url_log"
+    : > "$git_args_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		GIT_ARGS_LOG="$git_args_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_COMMIT_LOG="$installer_commit_log" \
-		"$manual_bin/mo" update --nightly
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        GIT_ARGS_LOG="$git_args_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_COMMIT_LOG="$installer_commit_log" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -eq 0 ] || return 1
-	[ -f "$installer_args_log" ] || return 1
-	[ "$(cat "$installer_commit_log")" = "$latest_commit" ] || return 1
-	grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log" || return 1
+    [ "$status" -eq 0 ] || return 1
+    [ -f "$installer_args_log" ] || return 1
+    [ "$(cat "$installer_commit_log")" = "$latest_commit" ] || return 1
+    grep -q 'raw.githubusercontent.com/tw93/mole/main/install.sh' "$curl_url_log" || return 1
 }
 
-@test "mo update --nightly --force reinstalls even when the installed commit is current" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local installer_commit_log="$TEST_ROOT/installer.commit"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+@test "legacy updater --nightly --force reinstalls even when the installed commit is current" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local installer_commit_log="$TEST_ROOT/installer.commit"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local latest_commit="e31d46faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_nightly_update_curl_stub "$fake_bin" "$latest_commit"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
-	: > "$curl_url_log"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_nightly_update_curl_stub "$fake_bin" "$latest_commit"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=e31d46f\n' > "$manual_config/install_channel"
+    : > "$curl_url_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		INSTALLER_COMMIT_LOG="$installer_commit_log" \
-		"$manual_bin/mo" update --nightly --force
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        INSTALLER_COMMIT_LOG="$installer_commit_log" \
+        "$manual_bin/mo" update --nightly --force
 
-	[ "$status" -eq 0 ]
-	[ -f "$installer_args_log" ]
-	grep -q -- "--prefix" "$installer_args_log"
-	[ "$(cat "$installer_version_log")" = "main" ]
-	[ "$(cat "$installer_commit_log")" = "$latest_commit" ] || return 1
-	grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"
+    [ "$status" -eq 0 ]
+    [ -f "$installer_args_log" ]
+    grep -q -- "--prefix" "$installer_args_log"
+    [ "$(cat "$installer_version_log")" = "main" ]
+    [ "$(cat "$installer_commit_log")" = "$latest_commit" ] || return 1
+    grep -q "raw.githubusercontent.com/tw93/mole/main/install.sh" "$curl_url_log"
 }
 
-@test "mo update tells installer to reuse sudo after parent authentication" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local installer_version_log="$TEST_ROOT/installer.version"
-	local installer_sudo_auth_log="$TEST_ROOT/installer.sudo-auth"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local sudo_log="$TEST_ROOT/sudo.log"
-	local current_version
+@test "legacy updater tells installer to reuse sudo after parent authentication" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local installer_version_log="$TEST_ROOT/installer.version"
+    local installer_sudo_auth_log="$TEST_ROOT/installer.sudo-auth"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local sudo_log="$TEST_ROOT/sudo.log"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_update_curl_stub "$fake_bin" "$current_version"
-	chmod a-w "$manual_bin"
-	cat > "$fake_bin/sudo" << 'SCRIPT'
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_update_curl_stub "$fake_bin" "$current_version"
+    chmod a-w "$manual_bin"
+    cat > "$fake_bin/sudo" << 'SCRIPT'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$SUDO_LOG"
 exit 0
 SCRIPT
-	chmod +x "$fake_bin/sudo"
-	: > "$curl_url_log"
-	: > "$sudo_log"
+    chmod +x "$fake_bin/sudo"
+    : > "$curl_url_log"
+    : > "$sudo_log"
 
-	run env \
-		HOME="$HOME" \
-		MOLE_TEST_MODE=0 \
-		MOLE_TEST_NO_AUTH=0 \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		INSTALLER_VERSION_LOG="$installer_version_log" \
-		INSTALLER_SUDO_AUTH_LOG="$installer_sudo_auth_log" \
-		SUDO_LOG="$sudo_log" \
-		"$manual_bin/mo" update --force
+    run env \
+        HOME="$HOME" \
+        MOLE_TEST_MODE=0 \
+        MOLE_TEST_NO_AUTH=0 \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        INSTALLER_VERSION_LOG="$installer_version_log" \
+        INSTALLER_SUDO_AUTH_LOG="$installer_sudo_auth_log" \
+        SUDO_LOG="$sudo_log" \
+        "$manual_bin/mo" update --force
 
-	chmod u+w "$manual_bin"
+    chmod u+w "$manual_bin"
 
-	[ "$status" -eq 0 ]
-	[ -f "$installer_sudo_auth_log" ]
-	[ "$(cat "$installer_sudo_auth_log")" = "1" ]
-	grep -q -- "-n true" "$sudo_log"
-	grep -q "raw.githubusercontent.com/tw93/mole/V${current_version#V}/install.sh" "$curl_url_log"
+    [ "$status" -eq 0 ]
+    [ -f "$installer_sudo_auth_log" ]
+    [ "$(cat "$installer_sudo_auth_log")" = "1" ]
+    grep -q -- "-n true" "$sudo_log"
+    grep -q "raw.githubusercontent.com/tw93/mole/V${current_version#V}/install.sh" "$curl_url_log"
 }
 
-@test "mo update aborts when the sudo session cannot reach the installer child" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local sudo_log="$TEST_ROOT/sudo.log"
-	local sudo_count="$TEST_ROOT/sudo.count"
-	local current_version
+@test "legacy updater aborts when the sudo session cannot reach the installer child" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local sudo_log="$TEST_ROOT/sudo.log"
+    local sudo_count="$TEST_ROOT/sudo.count"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	make_update_curl_stub "$fake_bin" "$current_version"
-	chmod a-w "$manual_bin"
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    make_update_curl_stub "$fake_bin" "$current_version"
+    chmod a-w "$manual_bin"
 
-	# macOS scopes the sudo timestamp to the controlling terminal and falls back
-	# to the parent PID when there is none, so a credential this shell holds does
-	# not reach a child process. Model exactly that: the first `-n true` (the one
-	# request_sudo_access runs in-process) succeeds, the probe's child call does
-	# not. Without the guard the installer runs and fails on a swallowed sudo.
-	cat > "$fake_bin/sudo" << 'SCRIPT'
+    # macOS scopes the sudo timestamp to the controlling terminal and falls back
+    # to the parent PID when there is none, so a credential this shell holds does
+    # not reach a child process. Model exactly that: the first `-n true` (the one
+    # request_sudo_access runs in-process) succeeds, the probe's child call does
+    # not. Without the guard the installer runs and fails on a swallowed sudo.
+    cat > "$fake_bin/sudo" << 'SCRIPT'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$SUDO_LOG"
 if [[ "$*" == "-n true" ]]; then
@@ -846,33 +855,33 @@ if [[ "$*" == "-n true" ]]; then
 fi
 exit 0
 SCRIPT
-	chmod +x "$fake_bin/sudo"
-	: > "$curl_url_log"
-	: > "$sudo_log"
-	: > "$sudo_count"
+    chmod +x "$fake_bin/sudo"
+    : > "$curl_url_log"
+    : > "$sudo_log"
+    : > "$sudo_count"
 
-	run env \
-		HOME="$HOME" \
-		MOLE_TEST_MODE=0 \
-		MOLE_TEST_NO_AUTH=0 \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		SUDO_LOG="$sudo_log" \
-		SUDO_COUNT="$sudo_count" \
-		"$manual_bin/mo" update --force
+    run env \
+        HOME="$HOME" \
+        MOLE_TEST_MODE=0 \
+        MOLE_TEST_NO_AUTH=0 \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        SUDO_LOG="$sudo_log" \
+        SUDO_COUNT="$sudo_count" \
+        "$manual_bin/mo" update --force
 
-	chmod u+w "$manual_bin"
+    chmod u+w "$manual_bin"
 
-	[ "$status" -eq 1 ] || return 1
-	[[ "$output" == *"Admin access cannot be handed to the installer"* ]] || return 1
-	[[ "$output" == *"sudo -v && mo update"* ]] || return 1
-	[ ! -e "$installer_args_log" ] || return 1
-	[ "$(cat "$sudo_count")" -ge 2 ] || return 1
+    [ "$status" -eq 1 ] || return 1
+    [[ "$output" == *"Admin access cannot be handed to the installer"* ]] || return 1
+    [[ "$output" == *"sudo -v && mo update"* ]] || return 1
+    [ ! -e "$installer_args_log" ] || return 1
+    [ "$(cat "$sudo_count")" -ge 2 ] || return 1
 }
 
 @test "installer sudo reuse uses non-interactive sudo checks" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -903,30 +912,30 @@ grep -qx -- "-n true" "$SUDO_LOG" || { echo "WRONG: sudo command was interactive
 chmod u+w "$INSTALL_DIR"
 EOF
 
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ]
 }
 
-@test "mo update keeps Homebrew installs on the Homebrew update path" {
-	local fake_brew_bin="$TEST_ROOT/homebrew/bin"
-	local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
-	local brew_log="$TEST_ROOT/brew.log"
+@test "legacy updater keeps Homebrew installs on the Homebrew update path" {
+    local fake_brew_bin="$TEST_ROOT/homebrew/bin"
+    local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
+    local brew_log="$TEST_ROOT/brew.log"
 
-	make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
-	: > "$brew_log"
+    make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
+    : > "$brew_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_brew_bin:/usr/bin:/bin" \
-		BREW_LOG="$brew_log" \
-		"$fake_brew_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_brew_bin:/usr/bin:/bin" \
+        BREW_LOG="$brew_log" \
+        "$fake_brew_bin/mo" update
 
-	[ "$status" -eq 0 ]
-	grep -q '^update$' "$brew_log"
-	grep -q '^upgrade mole$' "$brew_log"
+    [ "$status" -eq 0 ]
+    grep -q '^update$' "$brew_log"
+    grep -q '^upgrade mole$' "$brew_log"
 }
 
 @test "Homebrew update bounds fallback installed-binary version probes" {
-	run env HOME="$HOME/bounded-homebrew-version" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME/bounded-homebrew-version" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 mkdir -p "$HOME"
 source "$PROJECT_ROOT/lib/core/common.sh"
@@ -951,89 +960,89 @@ update_via_homebrew "1.0.0"
 grep -qFx "$MOLE_TIMEOUT_QUICK_DETECT_SEC|mo --version" "$trace"
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"Already on latest version, 9.9.9"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_DIRECT_MO"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"Already on latest version, 9.9.9"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_DIRECT_MO"* ]]
 }
 
-@test "mo update preserves actionable Homebrew diagnostics on failure (#1247)" {
-	local fake_brew_bin="$TEST_ROOT/homebrew/bin"
-	local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
-	local brew_log="$TEST_ROOT/brew.log"
-	local brew_upgrade_output
-	brew_upgrade_output=$'Error: Your Xcode (26.0.1) at /Applications/Xcode.app is too outdated.\nPlease update to Xcode 27.0 (or delete it).\nXcode can be updated from:\n  https://developer.apple.com/download/all/'
+@test "legacy updater preserves actionable Homebrew diagnostics on failure (#1247)" {
+    local fake_brew_bin="$TEST_ROOT/homebrew/bin"
+    local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
+    local brew_log="$TEST_ROOT/brew.log"
+    local brew_upgrade_output
+    brew_upgrade_output=$'Error: Your Xcode (26.0.1) at /Applications/Xcode.app is too outdated.\nPlease update to Xcode 27.0 (or delete it).\nXcode can be updated from:\n  https://developer.apple.com/download/all/'
 
-	make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
-	: > "$brew_log"
+    make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
+    : > "$brew_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_brew_bin:/usr/bin:/bin" \
-		BREW_LOG="$brew_log" \
-		BREW_UPGRADE_OUTPUT="$brew_upgrade_output" \
-		BREW_UPGRADE_STATUS=1 \
-		"$fake_brew_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_brew_bin:/usr/bin:/bin" \
+        BREW_LOG="$brew_log" \
+        BREW_UPGRADE_OUTPUT="$brew_upgrade_output" \
+        BREW_UPGRADE_STATUS=1 \
+        "$fake_brew_bin/mo" update
 
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
-	[[ "$output" == *"Please update to Xcode 27.0 (or delete it)."* ]] || return 1
-	[[ "$output" == *"https://developer.apple.com/download/all/"* ]]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
+    [[ "$output" == *"Please update to Xcode 27.0 (or delete it)."* ]] || return 1
+    [[ "$output" == *"https://developer.apple.com/download/all/"* ]]
 }
 
-@test "mo update trusts a nonzero Homebrew exit without Error text (#1247)" {
-	local fake_brew_bin="$TEST_ROOT/homebrew/bin"
-	local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
-	local brew_log="$TEST_ROOT/brew.log"
+@test "legacy updater trusts a nonzero Homebrew exit without Error text (#1247)" {
+    local fake_brew_bin="$TEST_ROOT/homebrew/bin"
+    local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
+    local brew_log="$TEST_ROOT/brew.log"
 
-	make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
-	: > "$brew_log"
+    make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
+    : > "$brew_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_brew_bin:/usr/bin:/bin" \
-		BREW_LOG="$brew_log" \
-		BREW_UPGRADE_OUTPUT="The upgrade command was interrupted" \
-		BREW_UPGRADE_STATUS=124 \
-		"$fake_brew_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_brew_bin:/usr/bin:/bin" \
+        BREW_LOG="$brew_log" \
+        BREW_UPGRADE_OUTPUT="The upgrade command was interrupted" \
+        BREW_UPGRADE_STATUS=124 \
+        "$fake_brew_bin/mo" update
 
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
-	[[ "$output" == *"The upgrade command was interrupted"* ]] || return 1
-	[[ "$output" != *"Updated to latest version"* ]]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
+    [[ "$output" == *"The upgrade command was interrupted"* ]] || return 1
+    [[ "$output" != *"Updated to latest version"* ]]
 }
 
-@test "mo update never treats mixed failure output as already installed" {
-	local fake_brew_bin="$TEST_ROOT/homebrew/bin"
-	local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
-	local brew_log="$TEST_ROOT/brew.log"
-	local brew_upgrade_output
-	brew_upgrade_output=$'mole 1.48.0 already installed\nError: simulated upgrade failure'
+@test "legacy updater never treats mixed failure output as already installed" {
+    local fake_brew_bin="$TEST_ROOT/homebrew/bin"
+    local fake_brew_mole="$TEST_ROOT/homebrew/Cellar/mole/9.9.9/bin/mole"
+    local brew_log="$TEST_ROOT/brew.log"
+    local brew_upgrade_output
+    brew_upgrade_output=$'mole 1.48.0 already installed\nError: simulated upgrade failure'
 
-	make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
-	: > "$brew_log"
+    make_homebrew_shadow "$fake_brew_bin" "$fake_brew_mole"
+    : > "$brew_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_brew_bin:/usr/bin:/bin" \
-		BREW_LOG="$brew_log" \
-		BREW_UPGRADE_OUTPUT="$brew_upgrade_output" \
-		BREW_UPGRADE_STATUS=1 \
-		"$fake_brew_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_brew_bin:/usr/bin:/bin" \
+        BREW_LOG="$brew_log" \
+        BREW_UPGRADE_OUTPUT="$brew_upgrade_output" \
+        BREW_UPGRADE_STATUS=1 \
+        "$fake_brew_bin/mo" update
 
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
-	[[ "$output" == *"Error: simulated upgrade failure"* ]] || return 1
-	[[ "$output" != *"Already on latest version"* ]]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Homebrew upgrade failed"* ]] || return 1
+    [[ "$output" == *"Error: simulated upgrade failure"* ]] || return 1
+    [[ "$output" != *"Already on latest version"* ]]
 }
 
 make_self_heal_curl_stub() {
-	local bin_dir="$1"
-	local latest_version="$2"
-	local heal_mode="$3"
-	cat > "$bin_dir/curl" << SCRIPT
+    local bin_dir="$1"
+    local latest_version="$2"
+    local heal_mode="$3"
+    cat > "$bin_dir/curl" << SCRIPT
 #!/usr/bin/env bash
 out=""
 url=""
@@ -1107,12 +1116,12 @@ fi
 
 printf 'VERSION="%s"\n' "$latest_version"
 SCRIPT
-	chmod +x "$bin_dir/curl"
+    chmod +x "$bin_dir/curl"
 }
 
 make_false_success_curl_stub() {
-	local bin_dir="$1"
-	cat > "$bin_dir/curl" <<'SCRIPT'
+    local bin_dir="$1"
+    cat > "$bin_dir/curl" << 'SCRIPT'
 #!/usr/bin/env bash
 out=""
 url=""
@@ -1146,123 +1155,123 @@ if [[ "$url" == *"/main/install.sh"* ]]; then
 fi
 printf 'VERSION="%s"\n' "$FALSE_SUCCESS_VERSION"
 SCRIPT
-	chmod +x "$bin_dir/curl"
+    chmod +x "$bin_dir/curl"
 }
 
-@test "mo update rejects staged installer success when the stable generation did not change" {
-	local manual_bin="$TEST_ROOT/false-stable/bin"
-	local manual_config="$TEST_ROOT/false-stable/config"
-	local fake_bin="$TEST_ROOT/false-stable/fake-bin"
-	local current_version
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
+@test "legacy updater rejects staged installer success when the stable generation did not change" {
+    local manual_bin="$TEST_ROOT/false-stable/bin"
+    local manual_config="$TEST_ROOT/false-stable/config"
+    local fake_bin="$TEST_ROOT/false-stable/fake-bin"
+    local current_version
+    current_version="1.54.0"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	make_false_success_curl_stub "$fake_bin"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    make_false_success_curl_stub "$fake_bin"
 
-	run env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
-		FALSE_SUCCESS_VERSION="$current_version" \
-		FALSE_SUCCESS_COMMIT="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
-		"$manual_bin/mo" update
+    run env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
+        FALSE_SUCCESS_VERSION="$current_version" \
+        FALSE_SUCCESS_COMMIT="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+        "$manual_bin/mo" update
 
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
-	[[ "$output" == *"Update failed"* ]] || return 1
-	[[ "$output" != *"Updated to latest version"* ]] || return 1
-	[ "$("$manual_bin/mole" --version | awk 'NF {print $NF; exit}')" = "0.0.1" ]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
+    [[ "$output" == *"Update failed"* ]] || return 1
+    [[ "$output" != *"Updated to latest version"* ]] || return 1
+    [ "$("$manual_bin/mole" --version | awk 'NF {print $NF; exit}')" = "0.0.1" ]
 }
 
-@test "mo update rejects staged installer success when nightly receipt and commit stay stale" {
-	local manual_bin="$TEST_ROOT/false-nightly/bin"
-	local manual_config="$TEST_ROOT/false-nightly/config"
-	local fake_bin="$TEST_ROOT/false-nightly/fake-bin"
-	local latest_commit="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+@test "legacy updater rejects staged installer success when nightly receipt and commit stay stale" {
+    local manual_bin="$TEST_ROOT/false-nightly/bin"
+    local manual_config="$TEST_ROOT/false-nightly/config"
+    local fake_bin="$TEST_ROOT/false-nightly/fake-bin"
+    local latest_commit="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
-	printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\nINSTALL_RECEIPT=old-receipt\n' > "$manual_config/install_channel"
-	make_false_success_curl_stub "$fake_bin"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "1.41.0"
+    printf 'CHANNEL=nightly\nCOMMIT_HASH=deadbee\nINSTALL_RECEIPT=old-receipt\n' > "$manual_config/install_channel"
+    make_false_success_curl_stub "$fake_bin"
 
-	run env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
-		FALSE_SUCCESS_VERSION="1.49.0" FALSE_SUCCESS_COMMIT="$latest_commit" \
-		"$manual_bin/mo" update --nightly
+    run env HOME="$HOME" PATH="$fake_bin:/usr/bin:/bin" \
+        FALSE_SUCCESS_VERSION="1.49.0" FALSE_SUCCESS_COMMIT="$latest_commit" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
-	[[ "$output" == *"Nightly update failed"* ]] || return 1
-	[[ "$output" != *"Updated to latest version"* ]] || return 1
-	grep -qFx 'COMMIT_HASH=deadbee' "$manual_config/install_channel"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
+    [[ "$output" == *"Nightly update failed"* ]] || return 1
+    [[ "$output" != *"Updated to latest version"* ]] || return 1
+    grep -qFx 'COMMIT_HASH=deadbee' "$manual_config/install_channel"
 }
 
-@test "mo update self-heals with a direct reinstall when the staged installer fails (#1297)" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local heal_log="$TEST_ROOT/heal.log"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local current_version
+@test "legacy updater self-heals with a direct reinstall when the staged installer fails (#1297)" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local heal_log="$TEST_ROOT/heal.log"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	make_self_heal_curl_stub "$fake_bin" "$current_version" "heal"
-	: > "$curl_url_log"
-	: > "$installer_args_log"
-	: > "$heal_log"
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    make_self_heal_curl_stub "$fake_bin" "$current_version" "heal"
+    : > "$curl_url_log"
+    : > "$installer_args_log"
+    : > "$heal_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		HEAL_LOG="$heal_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        HEAL_LOG="$heal_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -eq 0 ] || return 1
-	grep -q -- "--update" "$installer_args_log" || return 1
-	[[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
-	[[ "$output" == *"Updated to latest version, $current_version"* ]] || return 1
-	[ "$(cat "$heal_log")" = "V$current_version|$manual_bin|$manual_config" ]
+    [ "$status" -eq 0 ] || return 1
+    grep -q -- "--update" "$installer_args_log" || return 1
+    [[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
+    [[ "$output" == *"Updated to latest version, $current_version"* ]] || return 1
+    [ "$(cat "$heal_log")" = "V$current_version|$manual_bin|$manual_config" ]
 }
 
-@test "mo update prints the manual reinstall command when self-heal fails too" {
-	local manual_bin="$TEST_ROOT/manual/bin"
-	local manual_config="$TEST_ROOT/manual/config"
-	local fake_bin="$TEST_ROOT/fake-bin"
-	local installer_args_log="$TEST_ROOT/installer.args"
-	local heal_log="$TEST_ROOT/heal.log"
-	local curl_url_log="$TEST_ROOT/curl.urls"
-	local current_version
+@test "legacy updater prints the manual reinstall command when self-heal fails too" {
+    local manual_bin="$TEST_ROOT/manual/bin"
+    local manual_config="$TEST_ROOT/manual/config"
+    local fake_bin="$TEST_ROOT/fake-bin"
+    local installer_args_log="$TEST_ROOT/installer.args"
+    local heal_log="$TEST_ROOT/heal.log"
+    local curl_url_log="$TEST_ROOT/curl.urls"
+    local current_version
 
-	current_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$PROJECT_ROOT/mole" | head -1)"
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	make_self_heal_curl_stub "$fake_bin" "$current_version" "fail"
-	: > "$curl_url_log"
-	: > "$installer_args_log"
-	: > "$heal_log"
+    current_version="1.54.0"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    make_self_heal_curl_stub "$fake_bin" "$current_version" "fail"
+    : > "$curl_url_log"
+    : > "$installer_args_log"
+    : > "$heal_log"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		CURL_URL_LOG="$curl_url_log" \
-		INSTALLER_ARGS_LOG="$installer_args_log" \
-		HEAL_LOG="$heal_log" \
-		"$manual_bin/mo" update
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        CURL_URL_LOG="$curl_url_log" \
+        INSTALLER_ARGS_LOG="$installer_args_log" \
+        HEAL_LOG="$heal_log" \
+        "$manual_bin/mo" update
 
-	[ "$status" -ne 0 ] || return 1
-	[[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
-	[[ "$output" == *"Update failed"* ]] || return 1
-	[[ "$output" == *"MOLE_VERSION=V$current_version"* ]] || return 1
-	[[ "$output" == *"--prefix $manual_bin"* ]] || return 1
-	[[ "$output" == *"--config $manual_config"* ]]
+    [ "$status" -ne 0 ] || return 1
+    [[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
+    [[ "$output" == *"Update failed"* ]] || return 1
+    [[ "$output" == *"MOLE_VERSION=V$current_version"* ]] || return 1
+    [[ "$output" == *"--prefix $manual_bin"* ]] || return 1
+    [[ "$output" == *"--config $manual_config"* ]]
 }
 
 make_nightly_self_heal_curl_stub() {
-	local bin_dir="$1"
-	local latest_commit="$2"
-	cat > "$bin_dir/curl" << SCRIPT
+    local bin_dir="$1"
+    local latest_commit="$2"
+    cat > "$bin_dir/curl" << SCRIPT
 #!/usr/bin/env bash
 out=""
 url=""
@@ -1326,40 +1335,41 @@ fi
 
 exit 22
 SCRIPT
-	chmod +x "$bin_dir/curl"
+    chmod +x "$bin_dir/curl"
 }
 
-@test "mo update --nightly self-heals the selected install and verifies the main commit" {
-	local manual_bin="$TEST_ROOT/manual-nightly/bin"
-	local manual_config="$TEST_ROOT/manual-nightly/config"
-	local fake_bin="$TEST_ROOT/nightly-fake-bin"
-	local heal_log="$TEST_ROOT/nightly-heal.log"
-	local latest_commit="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+@test "legacy updater --nightly self-heals the selected install and verifies the main commit" {
+    local manual_bin="$TEST_ROOT/manual-nightly/bin"
+    local manual_config="$TEST_ROOT/manual-nightly/config"
+    local fake_bin="$TEST_ROOT/nightly-fake-bin"
+    local heal_log="$TEST_ROOT/nightly-heal.log"
+    local latest_commit="abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-	mkdir -p "$fake_bin"
-	make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
-	make_nightly_self_heal_curl_stub "$fake_bin" "$latest_commit"
+    mkdir -p "$fake_bin"
+    make_manual_mole_install "$manual_bin" "$manual_config" "0.0.1"
+    make_nightly_self_heal_curl_stub "$fake_bin" "$latest_commit"
 
-	run env \
-		HOME="$HOME" \
-		PATH="$fake_bin:/usr/bin:/bin" \
-		LATEST_COMMIT="$latest_commit" \
-		HEAL_LOG="$heal_log" \
-		"$manual_bin/mo" update --nightly
+    run env \
+        HOME="$HOME" \
+        PATH="$fake_bin:/usr/bin:/bin" \
+        LATEST_COMMIT="$latest_commit" \
+        HEAL_LOG="$heal_log" \
+        "$manual_bin/mo" update --nightly
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
-	[[ "$output" == *"Updated to nightly build, abc1234"* ]] || return 1
-	[ "$(cat "$heal_log")" = "main|$manual_bin|$manual_config" ] || return 1
-	grep -qFx 'CHANNEL=nightly' "$manual_config/install_channel" || return 1
-	grep -qFx 'COMMIT_HASH=abc1234' "$manual_config/install_channel"
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"Retrying with a direct reinstall"* ]] || return 1
+    [[ "$output" == *"Updated to nightly build, abc1234"* ]] || return 1
+    [ "$(cat "$heal_log")" = "main|$manual_bin|$manual_config" ] || return 1
+    grep -qFx 'CHANNEL=nightly' "$manual_config/install_channel" || return 1
+    grep -qFx 'COMMIT_HASH=abc1234' "$manual_config/install_channel"
 }
 
 @test "update lock rejects a live holder and reacquires after release" {
-	run env HOME="$HOME/update-lock" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
+    /bin/ps -p "$$" -o lstart= > /dev/null 2>&1 || skip "native update-lock integration requires process-start inspection; sandbox denies ps"
+    run env HOME="$HOME/update-lock" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME"
 source "$PROJECT_ROOT/lib/core/common.sh"
@@ -1491,21 +1501,21 @@ fi
 declare -f _update_verify_installed_generation | grep -q '_update_acquire_lock'
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_CONCURRENT_LOCK"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_EXTERNAL_LOCK_BYPASS"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_UPDATE_LOCK_SYMLINK_FOLLOW"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_AMBIENT_CONTROL_REMOVAL"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_INHERITED_UPDATE_LOCK_ACL"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_WRITABLE_UPDATE_PARENT_ACL_ACCEPTED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_PRIVILEGED_GROUP_WRITABLE_UPDATE_PREFIX_ACCEPTED"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_CONCURRENT_LOCK"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_EXTERNAL_LOCK_BYPASS"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_UPDATE_LOCK_SYMLINK_FOLLOW"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_AMBIENT_CONTROL_REMOVAL"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_INHERITED_UPDATE_LOCK_ACL"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_WRITABLE_UPDATE_PARENT_ACL_ACCEPTED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_PRIVILEGED_GROUP_WRITABLE_UPDATE_PREFIX_ACCEPTED"* ]] || return 1
 }
 
 @test "nightly commit lookup and self-heal fall back to wget" {
-	run env HOME="$HOME/wget-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
+    run env HOME="$HOME/wget-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config/bin" "$HOME/bin"
 printf '#!/bin/bash\necho "Mole version 0.0.1"\n' > "$HOME/bin/mole"
@@ -1516,6 +1526,7 @@ source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 expected_commit="def5678bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 export expected_commit
@@ -1553,15 +1564,15 @@ INSTALLER
 _update_self_heal_reinstall 0 main "$HOME/bin" "$HOME/config" "$HOME/bin/mole" "nightly build" "$expected_commit"
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"Updated to nightly build, def5678"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"Updated to nightly build, def5678"* ]]
 }
 
 @test "nightly self-heal accepts a fresh receipt without reusing a stale commit when HEAD is unknown" {
-	run env HOME="$HOME/unknown-head-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
+    run env HOME="$HOME/unknown-head-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config/bin" "$HOME/bin"
 printf '#!/bin/bash\necho "Mole version 0.0.1"\n' > "$HOME/bin/mole"
@@ -1573,6 +1584,7 @@ source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 curl() {
 	cat <<'INSTALLER'
@@ -1599,18 +1611,18 @@ INSTALLER
 _update_self_heal_reinstall 0 main "$HOME/bin" "$HOME/config" "$HOME/bin/mole" "nightly build" ""
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"Updated to nightly build"* ]] || return 1
-	[[ "$output" != *"deadbee"* ]] || return 1
-	run grep -q '^COMMIT_HASH=' "$HOME/unknown-head-self-heal/config/install_channel"
-	[ "$status" -eq 1 ]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"Updated to nightly build"* ]] || return 1
+    [[ "$output" != *"deadbee"* ]] || return 1
+    run grep -q '^COMMIT_HASH=' "$HOME/unknown-head-self-heal/config/install_channel"
+    [ "$status" -eq 1 ]
 }
 
 @test "nightly self-heal rejects stale metadata when this install writes no receipt" {
-	run env HOME="$HOME/stale-receipt-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
+    run env HOME="$HOME/stale-receipt-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config" "$HOME/bin"
 printf '#!/bin/bash\necho "Mole version 0.0.1"\n' > "$HOME/bin/mole"
@@ -1620,6 +1632,7 @@ source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 curl() {
 	printf '%s\n' '#!/usr/bin/env bash' 'exit 0'
@@ -1631,22 +1644,22 @@ fi
 exit 0
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"Updated to nightly build"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"Updated to nightly build"* ]]
 }
 
 @test "nightly self-heal bounds the installed binary version probe" {
-	local timeout_cmd="timeout"
-	command -v timeout > /dev/null 2>&1 || timeout_cmd="gtimeout"
-	command -v "$timeout_cmd" > /dev/null 2>&1 || skip "timeout command unavailable"
+    local timeout_cmd="timeout"
+    command -v timeout > /dev/null 2>&1 || timeout_cmd="gtimeout"
+    command -v "$timeout_cmd" > /dev/null 2>&1 || skip "timeout command unavailable"
 
-	# The inner 0.1-second probe is the behavior under test. Keep the outer
-	# timeout as a generous deadman for a real regression so a loaded parallel
-	# CI runner cannot fail the correct path merely from scheduling delay.
-	run "$timeout_cmd" 10 env HOME="$HOME/bounded-version-self-heal" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TIMEOUT_QUICK_DETECT_SEC=0.1 /bin/bash --noprofile --norc << 'INNER'
+    # The inner 0.1-second probe is the behavior under test. Keep the outer
+    # timeout as a generous deadman for a real regression so a loaded parallel
+    # CI runner cannot fail the correct path merely from scheduling delay.
+    run "$timeout_cmd" 10 env HOME="$HOME/bounded-version-self-heal" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TIMEOUT_QUICK_DETECT_SEC=0.1 /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config" "$HOME/bin"
 printf '#!/bin/bash\nsleep 30\n' > "$HOME/bin/mole"
@@ -1655,6 +1668,7 @@ source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 curl() {
 	cat <<'INSTALLER'
@@ -1677,20 +1691,21 @@ fi
 exit 0
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "nightly self-heal fails when the installed binary does not answer" {
-	run env HOME="$HOME/dead-binary-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
+    run env HOME="$HOME/dead-binary-self-heal" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 mkdir -p "$HOME/config" "$HOME/bin"
 source "$PROJECT_ROOT/lib/core/common.sh"
 VERSION="0.0.1"
 SCRIPT_DIR="$HOME/config"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 curl() {
 	cat <<'INSTALLER'
@@ -1718,25 +1733,26 @@ fi
 exit 0
 INNER
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"Updated to nightly build"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"Updated to nightly build"* ]]
 }
 
 @test "update sudo predicate agrees with the installer's needs_sudo" {
-	# The two sides must decide sudo identically. An existing writable
-	# install dir needs none even under a root-owned parent (the installer
-	# only touches the dir itself); a missing dir defers to the parent; an
-	# unwritable dir or entry script needs sudo. Getting the first case
-	# wrong forced authentication and aborted non-interactive updates the
-	# installer could have completed without sudo.
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    # The two sides must decide sudo identically. An existing writable
+    # install dir needs none even under a root-owned parent (the installer
+    # only touches the dir itself); a missing dir defers to the parent; an
+    # unwritable dir or entry script needs sudo. Getting the first case
+    # wrong forced authentication and aborted non-interactive updates the
+    # installer could have completed without sudo.
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 VERSION="0.0.0"
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 
 root="$HOME/sudo-predicate"
 mkdir -p "$root/locked-parent/bin" "$root/locked-parent-missing" "$root/locked-bin/bin"
@@ -1764,29 +1780,30 @@ if ! update_install_requires_sudo "$root/readonly-mole/bin"; then
 fi
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"EXISTING_WRITABLE=no-sudo"* ]] || return 1
-	[[ "$output" == *"MISSING_UNDER_LOCKED=needs-sudo"* ]] || return 1
-	[[ "$output" == *"UNWRITABLE_DIR=needs-sudo"* ]] || return 1
-	# A read-only entry script in a writable dir is replaced by atomic mv,
-	# which needs directory write only; the installer never sudos for it.
-	[[ "$output" == *"READONLY_MOLE=no-sudo"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"EXISTING_WRITABLE=no-sudo"* ]] || return 1
+    [[ "$output" == *"MISSING_UNDER_LOCKED=needs-sudo"* ]] || return 1
+    [[ "$output" == *"UNWRITABLE_DIR=needs-sudo"* ]] || return 1
+    # A read-only entry script in a writable dir is replaced by atomic mv,
+    # which needs directory write only; the installer never sudos for it.
+    [[ "$output" == *"READONLY_MOLE=no-sudo"* ]] || return 1
 }
 
 @test "a Cellar symlink is a Homebrew install even when brew cannot confirm (#1488)" {
-	local case_root="$TEST_ROOT/cellar-evidence"
-	local cellar_mole="$case_root/Cellar/mole/9.9.9/bin/mole"
-	mkdir -p "$(dirname "$cellar_mole")" "$case_root/bin"
-	: > "$cellar_mole"
-	ln -s "$cellar_mole" "$case_root/bin/mole"
+    local case_root="$TEST_ROOT/cellar-evidence"
+    local cellar_mole="$case_root/Cellar/mole/9.9.9/bin/mole"
+    mkdir -p "$(dirname "$cellar_mole")" "$case_root/bin"
+    : > "$cellar_mole"
+    ln -s "$cellar_mole" "$case_root/bin/mole"
 
-	run env PROJECT_ROOT="$PROJECT_ROOT" CASE_ROOT="$case_root" /bin/bash --noprofile --norc << 'EOF'
+    run env PROJECT_ROOT="$PROJECT_ROOT" CASE_ROOT="$case_root" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/manage/update.sh"
+source "$PROJECT_ROOT/tests/helpers/update_lock_fixture.sh"
 # A flaky or absent brew must not flip the on-disk evidence to "manual":
 # that verdict is what let the manual updater overwrite brew's symlinks.
 brew_mole_formula_installed() { return 1; }
@@ -1795,20 +1812,20 @@ is_homebrew_mole_path "$CASE_ROOT/bin/mole" true || exit 1
 echo "CELLAR_EVIDENCE_OK"
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"CELLAR_EVIDENCE_OK"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"CELLAR_EVIDENCE_OK"* ]]
 }
 
 @test "brew update repairs only launchers pinning a removed keg (#1488)" {
-	local prefix="$TEST_ROOT/heal-prefix"
-	mkdir -p "$prefix/bin" "$prefix/Cellar/mole/9.9.9/libexec"
-	local brew_log="$TEST_ROOT/heal-brew.log"
-	: > "$brew_log"
+    local prefix="$TEST_ROOT/heal-prefix"
+    mkdir -p "$prefix/bin" "$prefix/Cellar/mole/9.9.9/libexec"
+    local brew_log="$TEST_ROOT/heal-brew.log"
+    : > "$brew_log"
 
-	run env PROJECT_ROOT="$PROJECT_ROOT" PREFIX="$prefix" BREW_LOG="$brew_log" HOME="$HOME" /bin/bash --noprofile --norc << 'EOF'
+    run env PROJECT_ROOT="$PROJECT_ROOT" PREFIX="$prefix" BREW_LOG="$brew_log" HOME="$HOME" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 run_with_timeout() { shift; "$@"; }
@@ -1847,9 +1864,9 @@ grep -q "link --overwrite mole" "$BREW_LOG" || { echo "MISSING_REPAIR_DANGLING";
 echo "HEAL_SHAPE_OK"
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"HEAL_SHAPE_OK"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"HEAL_SHAPE_OK"* ]]
 }

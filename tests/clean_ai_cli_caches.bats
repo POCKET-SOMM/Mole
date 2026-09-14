@@ -377,6 +377,7 @@ source "$PROJECT_ROOT/lib/clean/dev.sh"
 safe_clean() { echo "SAFE_CLEAN:$2|$1"; }
 clean_service_worker_cache() { echo "SWC:$1"; }
 note_activity() { :; }
+antigravity_or_gemini_running() { return 1; }
 clean_antigravity_caches
 EOF
 

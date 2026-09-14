@@ -229,6 +229,9 @@ func scanPathConcurrentWithLimiter(ctx context.Context, root string, filesScanne
 	if err := ctx.Err(); err != nil {
 		return scanResult{}, err
 	}
+	if err := localScanPath(root); err != nil {
+		return scanResult{}, err
+	}
 	children, err := os.ReadDir(root)
 	if err != nil {
 		return scanResult{}, err
@@ -311,14 +314,13 @@ scanChildren:
 			break
 		}
 		fullPath := filepath.Join(root, child.Name())
+		if excludedLocalTree(fullPath) {
+			continue
+		}
 
 		// Skip symlinks to avoid following unexpected targets.
 		if child.Type()&fs.ModeSymlink != 0 {
-			targetInfo, err := os.Stat(fullPath)
-			isDir := false
-			if err == nil && targetInfo.IsDir() {
-				isDir = true
-			}
+			isDir := false // Never follow a link merely to decorate its row.
 
 			// Count link size only to avoid double-counting targets.
 			info, err := child.Info()
@@ -684,6 +686,9 @@ func calculateDirSizeFastWithLimiter(ctx context.Context, root string, limiter *
 			currentPath.Store(dirPath)
 		}
 
+		if localScanPath(dirPath) != nil {
+			return
+		}
 		entries, err := os.ReadDir(dirPath)
 		if err != nil {
 			return
@@ -828,6 +833,9 @@ func calculateDirSizeConcurrent(ctx context.Context, root string, largeFileChan 
 	if ctx.Err() != nil {
 		return 0
 	}
+	if localScanPath(root) != nil {
+		return 0
+	}
 	children, err := os.ReadDir(root)
 	if err != nil {
 		return 0
@@ -846,6 +854,9 @@ scanChildren:
 			break
 		}
 		fullPath := filepath.Join(root, child.Name())
+		if excludedLocalTree(fullPath) {
+			continue
+		}
 
 		if child.Type()&fs.ModeSymlink != 0 {
 			info, err := child.Info()
@@ -1020,6 +1031,9 @@ func getDirectorySizeFromDuWithExcludeAndIgnores(ctx context.Context, path strin
 	}
 
 	runDuSize := func(target string) (int64, error) {
+		if err := localScanPath(target); err != nil {
+			return 0, err
+		}
 		if _, err := os.Stat(target); err != nil {
 			return 0, err
 		}
@@ -1027,12 +1041,13 @@ func getDirectorySizeFromDuWithExcludeAndIgnores(ctx context.Context, path strin
 		ctx, cancel := context.WithTimeout(ctx, duTimeout)
 		defer cancel()
 
-		args := []string{"-skPx"}
+		args := []string{"-skPx", "-I", "CloudStorage", "-I", "Mobile Documents"}
 		for _, ignoreName := range ignoreNames {
 			args = append(args, "-I", ignoreName)
 		}
 		args = append(args, target)
 		cmd := exec.CommandContext(ctx, "du", args...)
+		cmd.Env = append(os.Environ(), "LC_ALL=C")
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -1203,8 +1218,16 @@ func getDirectorySizeFromDuSkippingImmediateChild(path string, excludePath strin
 }
 
 func getDirectoryLogicalSizeWithExclude(path string, excludePath string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), duTimeout)
+	defer cancel()
 	var total int64
 	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if excludedLocalTree(p) {
+			return filepath.SkipDir
+		}
 		if err != nil {
 			if os.IsPermission(err) {
 				return filepath.SkipDir

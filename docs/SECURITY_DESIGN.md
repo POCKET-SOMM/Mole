@@ -176,11 +176,10 @@ The deliberate redundancy between FAST and CRITICAL is **not** a bug:
 ### Keeping the lists honest
 
 A new macOS major release can ship new system apps and daemons. The
-monthly `.github/workflows/bundle_audit.yml` job runs
-`scripts/audit_bundle_drift.sh` against the latest `macos-latest`
-runner. The script enumerates every `.app` under `/System/Applications`,
+fork keeps `scripts/audit_bundle_drift.sh` as a manual read-only audit;
+it does not schedule a workflow or create issues. The script enumerates every `.app` under `/System/Applications`,
 computes its `CFBundleIdentifier`, and reports any bundle ID not matched
-by FAST + CRITICAL + DATA_PROTECTED. Any miss opens a tracking issue.
+by FAST + CRITICAL + DATA_PROTECTED. Review any reported miss before deciding whether a policy change is needed.
 
 Each macOS major release should also trigger the
 `macos-release-review` issue template

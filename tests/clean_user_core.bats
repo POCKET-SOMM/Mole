@@ -10,6 +10,11 @@ setup_file() {
     HOME="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-user-core.XXXXXX")"
     export HOME
 
+    # A fake HOME alone leaves the system-wide app fallback reachable.
+    export MOLE_CHROME_APP_PATHS="$HOME/Applications/Google Chrome.app"
+    export MOLE_EDGE_APP_PATHS="$HOME/Applications/Microsoft Edge.app"
+    export MOLE_BRAVE_APP_PATHS="$HOME/Applications/Brave Browser.app"
+
     # Prevent AppleScript permission dialogs during tests
     MOLE_TEST_MODE=1
     export MOLE_TEST_MODE
@@ -66,7 +71,7 @@ EOF
     mkdir -p "$(dirname "$partial")"
     printf 'partial\n' > "$partial"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -97,7 +102,7 @@ EOF
     printf 'partial\n' > "$partial"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/bin/clean.sh"
@@ -123,7 +128,7 @@ get_cleanup_path_size_kb() {
 record_dry_run_cleanup_target() { printf 'UNEXPECTED_REGISTER:%s\n' "$1"; }
 note_activity() { :; }
 DRY_RUN=true
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 _clean_incomplete_downloads
 printf 'EXISTS=%s ORDER=%s\n' "$(test -f "$partial" && echo yes || echo no)" \
@@ -182,7 +187,7 @@ EOF
         "$test_home/Library/Caches/deno/origin-data" \
         "$test_home/Library/Caches/ordinary-app/junk"
 
-    run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -223,7 +228,10 @@ clean_user_essentials
 [[ ! -e "$HOME/Library/Caches/ordinary-app" ]]
 EOF
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" != *"User app cache|$test_home/Library/Caches/deno"* ]] || return 1
     [[ "$output" == *"User app cache|$test_home/Library/Caches/ordinary-app"* ]] || return 1
     rm -rf "$test_home"
@@ -242,7 +250,7 @@ EOF
 
     run env HOME="$nested_home" PROJECT_ROOT="$PROJECT_ROOT" \
         DENO_DIR="$nested_home/Library/Caches/tool-root/deno" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -278,10 +286,13 @@ clean_user_essentials
 [[ -d "$HOME/Library/Caches/tool-root/deno/origin-data" ]] || exit 1
 [[ ! -e "$HOME/Library/Caches/ordinary-app" ]]
 EOF
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 
     run env HOME="$linked_home" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -318,7 +329,10 @@ clean_user_essentials
 [[ -d "$HOME/Library/Caches/physical-deno/origin-data" ]] || exit 1
 [[ ! -e "$HOME/Library/Caches/ordinary-app" ]]
 EOF
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     rm -rf "$nested_home" "$linked_home"
 }
 
@@ -328,7 +342,7 @@ EOF
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" \
         DENO_DIR="$test_home/Library/Caches" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -358,7 +372,10 @@ safe_clean_guarded() {
 clean_user_essentials
 EOF
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" != *"CLEAN=User app cache"* ]] || return 1
     [[ "$output" == *"CLEAN=User app logs"* ]] || return 1
     # Refusing silently would drop the whole category from the section with no
@@ -385,7 +402,7 @@ EOF
     ln -s "$test_home/Library/Caches/deno-old" "$test_home/Library/Caches/deno"
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_NO_AUTH=1 \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
@@ -410,7 +427,10 @@ safe_remove() {
 clean_user_essentials
 EOF
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ -d "$test_home/Library/Caches/ordinary-app" ]] || {
         echo "sink deleted the retargeted Deno root"
         return 1
@@ -441,7 +461,7 @@ EOF
     printf '%s\n' "$test_home/.cache/keep-my-own-thing/*" > "$test_home/.config/mole/whitelist"
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 load_mole_whitelist "$HOME"
@@ -460,7 +480,10 @@ done
 is_path_whitelisted "$HOME/.cache/keep-my-own-thing/x" && printf 'CUSTOM_KEPT\n'
 EOF
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" != *"EXPOSED="* ]] || {
         echo "$output"
         return 1
@@ -957,11 +980,11 @@ EOF
     local total_kb
     total_kb=$(printf '%s\n' "$output" | sed -n 's/.*TOTAL_KB=\([0-9][0-9]*\).*/\1/p' | tail -1)
     [[ -n "$total_kb" ]] || return 1
-	[[ "$total_kb" -ge 2 ]]
+    [[ "$total_kb" -ge 2 ]]
 }
 
 @test "clean_application_support_logs reuses exact item sizes at removal" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -990,9 +1013,9 @@ command rm -rf "$HOME/Library/Application Support/TestApp" \
     "$HOME/remove-calls"
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"REMOVE=$HOME/Library/Application Support/TestApp/Code Cache/nested SILENT=true SIZE=2"* ]] || return 1
-	[[ "$output" == *"REMOVE=$HOME/Library/Group Containers/group.com.apple.contentdelivery/Logs/event.log SILENT=true SIZE=2"* ]] || return 1
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"REMOVE=$HOME/Library/Application Support/TestApp/Code Cache/nested SILENT=true SIZE=2"* ]] || return 1
+    [[ "$output" == *"REMOVE=$HOME/Library/Group Containers/group.com.apple.contentdelivery/Logs/event.log SILENT=true SIZE=2"* ]] || return 1
 }
 
 @test "clean_application_support_logs uses bulk clean for large Application Support directories" {
@@ -1191,11 +1214,11 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Group Containers logs/caches"* ]] || return 1
-	[[ "$output" == *"PASS"* ]]
+    [[ "$output" == *"PASS"* ]]
 }
 
 @test "clean_group_container_caches reuses exact item sizes at removal" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -1217,15 +1240,15 @@ printf 'cache\n' > "$item"
 clean_group_container_caches
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"REMOVE=$HOME/Library/Group Containers/group.com.example.tool/Library/Caches/cache.db SILENT=true SIZE=77"* ]] || return 1
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"REMOVE=$HOME/Library/Group Containers/group.com.example.tool/Library/Caches/cache.db SILENT=true SIZE=77"* ]] || return 1
 }
 
 @test "clean_group_container_caches dry run omits a live nested non-SQLite cache (#1471)" {
     local live_target="$HOME/Library/Group Containers/TEAM.com.example.shared/Library/Caches/ComputerUse"
     local idle_target="$HOME/Library/Group Containers/TEAM.com.example.shared/Library/Caches/IdleCache"
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=true \
-        live_target="$live_target" idle_target="$idle_target" /bin/bash --noprofile --norc <<'EOF'
+        live_target="$live_target" idle_target="$idle_target" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -1278,7 +1301,7 @@ EOF
     local model_parent="$model_home/Library/Group Containers/TEAM.com.example.shared/Library/Caches/Vision"
     local idle_target="$model_home/Library/Group Containers/TEAM.com.example.shared/Library/Caches/ZIdle"
     run env HOME="$model_home" PROJECT_ROOT="$PROJECT_ROOT" MOLE_DRY_RUN=1 \
-        model_parent="$model_parent" idle_target="$idle_target" /bin/bash --noprofile --norc <<'EOF'
+        model_parent="$model_parent" idle_target="$idle_target" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/bin/clean.sh"
 start_section_spinner() { :; }
@@ -1333,7 +1356,7 @@ EOF
 }
 
 @test "explicit App Container cleanup families expose one cumulative probe deadline (#1471)" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/app_caches.sh"
@@ -1380,7 +1403,7 @@ EOF
 
 @test "process_container_cache counts only items safe_remove actually removed (#1471)" {
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -1415,7 +1438,7 @@ EOF
     local refused_home
     refused_home=$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-refused-group.XXXXXX")
     run env HOME="$refused_home" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
@@ -2298,7 +2321,7 @@ EOF
     touch "$container/payload"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" DRY_RUN=false \
-        MOLE_CURRENT_COMMAND=clean MOLE_CLEAN_CANCEL_STATUS=0 \
+        _MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean MOLE_CLEAN_CANCEL_STATUS=0 \
         /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
@@ -2537,14 +2560,14 @@ EOF
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" \
         VOLUME="$volume" METADATA_FILE="$metadata_file" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
 
 DRY_RUN=false
 PROTECT_FINDER_METADATA=true
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 files_cleaned=0
 total_size_cleaned=0
@@ -2626,14 +2649,14 @@ EOF
     touch "$volume/.Trashes/cache.tmp"
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" VOLUME="$volume" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
 
 DRY_RUN=false
 PROTECT_FINDER_METADATA=true
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 files_cleaned=0
 total_size_cleaned=0
@@ -2692,14 +2715,14 @@ EOF
         "$volume/.DocumentRevisions-V100/staging"
 
     run env HOME="$test_home" PROJECT_ROOT="$PROJECT_ROOT" VOLUME="$volume" \
-        /bin/bash --noprofile --norc <<'EOF_INNER'
+        /bin/bash --noprofile --norc << 'EOF_INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
 
 DRY_RUN=false
 PROTECT_FINDER_METADATA=true
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 files_cleaned=0
 total_size_cleaned=0

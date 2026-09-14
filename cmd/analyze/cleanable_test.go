@@ -8,6 +8,11 @@ import (
 	"testing"
 )
 
+const (
+	cacheDirTagFileName  = "CACHEDIR.TAG"
+	cacheDirTagSignature = "Signature: 8a477f597d28d172789f06886806bc55"
+)
+
 func writeCacheDirTag(t testing.TB, dir string, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, cacheDirTagFileName), []byte(content), 0o644); err != nil {
@@ -15,12 +20,12 @@ func writeCacheDirTag(t testing.TB, dir string, content string) {
 	}
 }
 
-func TestIsCleanableDirAcceptsValidCacheDirTag(t *testing.T) {
+func TestCacheDirTagDoesNotAuthorizeDeletion(t *testing.T) {
 	dir := t.TempDir()
 	writeCacheDirTag(t, dir, cacheDirTagSignature+"\n# https://bford.info/cachedir/")
 
-	if !isCleanableDir(dir) {
-		t.Fatalf("expected valid CACHEDIR.TAG directory to be cleanable")
+	if isCleanableDir(dir) {
+		t.Fatalf("a cache tag must not promise safe offline recovery")
 	}
 }
 

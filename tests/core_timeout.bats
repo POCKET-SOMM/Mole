@@ -368,10 +368,10 @@ _tty_bg_field() {
 	# Parallel scan workers.
 	run grep -nE 'process_app_metadata[[:space:]].*<[[:space:]]*/dev/null[[:space:]]*&[[:space:]]*$' "$PROJECT_ROOT/bin/uninstall.sh"
 	[ "$status" -eq 0 ] || return 1
-	# Post-uninstall work: Homebrew autoremove and LaunchServices/Dock refresh.
-	run grep -cE '^[[:space:]]*\)[[:space:]]*>[[:space:]]*/dev/null[[:space:]]+2>&1[[:space:]]+<[[:space:]]*/dev/null[[:space:]]*&[[:space:]]*$' "$PROJECT_ROOT/lib/uninstall/batch.sh"
-	[ "$status" -eq 0 ] || return 1
-	[ "$output" -ge 2 ] || return 1
+    # This fork no longer starts unselected post-uninstall mutation workers.
+    run grep -E '^[[:space:]]*(run_with_timeout.*brew autoremove|remove_apps_from_dock[[:space:]]|refresh_launch_services_after_uninstall[[:space:]])' "$PROJECT_ROOT/lib/uninstall/batch.sh"
+    [ "$status" -eq 1 ]
+
 }
 
 @test "run_with_timeout: shell fallback preserves caller INT trap" {
