@@ -60,7 +60,7 @@ func (m model) View() string {
 	} else {
 		fmt.Fprintf(&b, "%sAnalyze Disk%s  %s%s%s", colorPurpleBold, colorReset, colorGray, displayPath(m.path), colorReset)
 		if !m.scanning || m.totalSize > 0 {
-			fmt.Fprintf(&b, "  |  Total: %s", humanizeBytes(m.totalSize))
+			fmt.Fprintf(&b, "  |  Estimated: %s", humanizeBytes(m.totalSize))
 		}
 		fmt.Fprintf(&b, "\n\n")
 	}
@@ -278,7 +278,7 @@ func (m model) View() string {
 					// across terminals, while every row has the same navigation.
 					hintLabel := ""
 					if unusedTime := formatUnusedTime(entry.LastAccess); unusedTime != "" {
-						hintLabel = fmt.Sprintf("%s%s%s", colorGray, unusedTime, colorReset)
+						hintLabel = fmt.Sprintf("%satime %s%s", colorGray, unusedTime, colorReset)
 					}
 
 					if hintLabel == "" {
@@ -554,7 +554,7 @@ func entryHintLabel(entry dirEntry) string {
 		return fmt.Sprintf("%s🧹%s", colorYellow, colorReset)
 	}
 	if unusedTime := formatUnusedTime(entry.LastAccess); unusedTime != "" {
-		return fmt.Sprintf("%s%s%s", colorGray, unusedTime, colorReset)
+		return fmt.Sprintf("%satime %s%s", colorGray, unusedTime, colorReset)
 	}
 	return ""
 }

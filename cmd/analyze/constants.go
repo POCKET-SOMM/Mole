@@ -72,6 +72,7 @@ var overviewDuIgnoreNames = map[string]bool{
 	// when most entries are cloud placeholders. Keep the overview responsive;
 	// users can still drill into the folder explicitly when they need it.
 	"Mobile Documents": true,
+	"CloudStorage":     true,
 }
 
 var foldDirs = map[string]bool{

@@ -11,6 +11,18 @@ readonly MOLE_MANAGE_REMOVE_LOADED=1
 
 # Remove flow (Homebrew + manual + config/cache).
 remove_mole() {
+    # Portable releases must never discover or remove a different installation.
+    # The marker is data only; its presence can only disable this removal path.
+    local portable_root=""
+    if [[ -n "${MOLE_ENTRY_SCRIPT:-}" ]]; then
+        portable_root="$(cd "$(dirname "$MOLE_ENTRY_SCRIPT")" && pwd -P)" || return 1
+        if [[ -f "$portable_root/PORTABLE" ]]; then
+            printf '%s\n' 'This is a portable Mole package. No files were removed.' \
+                "To remove it, move this package folder to Trash: $portable_root" \
+                'Local history and configuration are retained.'
+            return 0
+        fi
+    fi
     local dry_run_mode="${1:-false}"
     local test_mode=false
     if [[ "${MOLE_TEST_MODE:-0}" == "1" ]]; then

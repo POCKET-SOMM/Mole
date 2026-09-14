@@ -1616,6 +1616,7 @@ source "$PROJECT_ROOT/lib/clean/project.sh"
 mkdir -p "$HOME/probe/project/node_modules" "$HOME/.cache/mole"
 touch "$HOME/probe/project/package.json"
 fd() { :; }
+mole_path_is_local() { return 0; }
 export MO_USE_FIND=0
 run_with_timeout() {
     shift
@@ -2785,8 +2786,8 @@ EOF
 	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 
-protected="$HOME/www/protected/node_modules"
-unprotected="$HOME/www/unprotected/node_modules"
+protected="$HOME/www/protected/.pytest_cache"
+unprotected="$HOME/www/unprotected/.pytest_cache"
 mkdir -p "$protected" "$unprotected" "$HOME/.config/mole" "$HOME/.cache/mole"
 printf 'keep\n' > "$protected/keep.js"
 printf 'remove\n' > "$unprotected/remove.js"
@@ -2811,6 +2812,9 @@ get_file_mtime() { echo 1577836800; }
 is_recently_modified() { return 1; }
 purge_target_activity_still_safe() { return 0; }
 
+mkdir -p "$HOME/invoking"
+touch "$HOME/invoking/package.json"
+cd "$HOME/invoking"
 start_purge
 clean_project_artifacts </dev/null
 
@@ -3182,7 +3186,7 @@ SCRIPT
 	[ "$project_path1" = "$expected_project_path" ] || return 1
 }
 
-@test "sort: cloud marker stays aligned across menu and full-path arrays" {
+@test "purge excludes cloud roots from selectable menu arrays" {
 	mkdir -p "$HOME/www/local-project/node_modules"
 	mkdir -p "$HOME/Library/CloudStorage/TestProvider/cloud-project/node_modules"
 	echo '{}' > "$HOME/www/local-project/package.json"
@@ -3239,10 +3243,7 @@ SCRIPT
 	[[ "$path0" != *"[cloud]"* ]] || return 1
 	[[ "$menu0" == *"local-project"* ]] || return 1
 	[[ "$path0" == *"local-project"* ]] || return 1
-	[[ "$menu1" == *"[cloud]"* ]] || return 1
-	[[ "$path1" == *"[cloud]"* ]] || return 1
-	[[ "$menu1" == *"cloud-project"* ]] || return 1
-	[[ "$path1" == *"cloud-project"* ]] || return 1
+	[[ -z "$menu1" && -z "$path1" ]] || return 1
 }
 
 @test "purge protects deployment keys and tracked source but keeps ordinary artifacts eligible" {

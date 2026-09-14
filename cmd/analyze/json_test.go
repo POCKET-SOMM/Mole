@@ -75,8 +75,8 @@ func TestJSONEntriesFromDirEntriesIncludesMetadata(t *testing.T) {
 	if entries[0].LastAccess == "" {
 		t.Fatalf("expected last_access to be populated")
 	}
-	if entries[1].Cleanable != true {
-		t.Fatalf("expected node_modules entry to be marked cleanable")
+	if entries[1].Cleanable {
+		t.Fatalf("node_modules must not be advertised as safe to remove")
 	}
 }
 

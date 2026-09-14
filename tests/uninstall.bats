@@ -147,7 +147,7 @@ EOF
     mkdir -p "$nested"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" NESTED="$nested" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -324,6 +324,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 format_uninstall_preview_path "$HOME/preview-size-file"
 EOF
     )"
@@ -333,10 +336,13 @@ EOF
 }
 
 @test "format_uninstall_preview_path propagates timed out and interrupted size probes" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 get_path_size_kb() { return "$SIZE_RC"; }
 for SIZE_RC in 124 130; do
     rc=0
@@ -357,6 +363,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -402,6 +411,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 export MOLE_DELETE_MODE=trash
 
 start_inline_spinner() { :; }
@@ -445,6 +457,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 export MOLE_DELETE_MODE=permanent
 
 start_inline_spinner() { :; }
@@ -489,6 +504,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 start_inline_spinner() { :; }
 stop_inline_spinner() { :; }
@@ -527,6 +545,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 apps_data=(
 	"0|$HOME/Applications/Shared.app|Shared|com.example.Shared|0|Never|0"
@@ -567,6 +588,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 # The survivor's id differs from the selected app's only in case. On a default
 # APFS volume both apps read and write the SAME ~/Library/Preferences plist, so
@@ -607,10 +631,13 @@ EOF
         "$app_root/Setapp/NewSibling.app/Contents"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_ROOT="$app_root" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 printf '%s\n' \
@@ -655,10 +682,13 @@ EOF
         "$app_root/Unrelated.App/Contents"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_ROOT="$app_root" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 write_bundle_id() {
@@ -715,10 +745,13 @@ EOF
     mkdir -p "$app_root/Survivor.app/Contents" "$HOME/Selected.app"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_ROOT="$app_root" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 printf '%s\n' \
@@ -748,10 +781,13 @@ EOF
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" \
         VOLUMES_ROOT="$volumes_root" SURVIVOR="$survivor" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 printf '%s\n' \
@@ -783,10 +819,13 @@ EOF
     mkdir -p "$app_root/one/two/three/four/Deep.app/Contents" "$HOME/Selected.app"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_ROOT="$app_root" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 printf '%s\n' \
     '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -813,7 +852,7 @@ EOF
 
 @test "strict package receipt discovery rejects partial output" {
     run env HOME="$HOME/pkg-partial" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -849,22 +888,22 @@ EOF
 }
 
 @test "non-strict receipt discovery bounds each pkgutil file listing" {
-	local mock_bin="$HOME/mock-pkgutil-bin"
-	mkdir -p "$mock_bin"
-	cat > "$mock_bin/pkgutil" <<'MOCK'
+    local mock_bin="$HOME/mock-pkgutil-bin"
+    mkdir -p "$mock_bin"
+    cat > "$mock_bin/pkgutil" << 'MOCK'
 #!/bin/bash
 case "$1" in
     --pkgs) printf 'com.example.big\ncom.example.after\n' ;;
     --files) exec sleep 30 ;;
 esac
 MOCK
-	chmod +x "$mock_bin/pkgutil"
+    chmod +x "$mock_bin/pkgutil"
 
-	run env HOME="$HOME/pkg-bound" PROJECT_ROOT="$PROJECT_ROOT" \
-		PATH="$mock_bin:/usr/bin:/bin" \
-		MOLE_PKG_RECEIPT_CACHE_DISABLE=1 \
-		MOLE_PKG_RECEIPT_SCAN_TIMEOUT=1 \
-		MOLE_PKG_RECEIPT_LIST_TIMEOUT=1 /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME/pkg-bound" PROJECT_ROOT="$PROJECT_ROOT" \
+        PATH="$mock_bin:/usr/bin:/bin" \
+        MOLE_PKG_RECEIPT_CACHE_DISABLE=1 \
+        MOLE_PKG_RECEIPT_SCAN_TIMEOUT=1 \
+        MOLE_PKG_RECEIPT_LIST_TIMEOUT=1 /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -876,12 +915,12 @@ printf 'RC=%s ELAPSED=%s OUTPUT=%s\n' "$rc" "$elapsed" "$output"
 [[ $elapsed -lt 8 ]]
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"RC=0 "* ]] || return 1
-	[[ "$output" == *" OUTPUT=" ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"RC=0 "* ]] || return 1
+    [[ "$output" == *" OUTPUT=" ]]
 }
 
 @test "live same-bundle scan discards partial find output" {
@@ -889,10 +928,13 @@ EOF
     mkdir -p "$app_root/Selected.app" "$app_root/Partial.app/Contents"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_ROOT="$app_root" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 selected_apps=("0|$APP_ROOT/Selected.app|Selected|com.example.partial|0|Never")
@@ -922,10 +964,13 @@ EOF
 
 @test "batch execution rejects a changed same-bundle app set before teardown" {
     run env HOME="$HOME/live-set-race" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 app_path="$HOME/Applications/Race.app"
@@ -978,10 +1023,13 @@ EOF
 
 @test "batch execution rejects a selected Info.plist changed after preview" {
     run env HOME="$HOME/selected-info-race" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/Race.app"
 mkdir -p "$app_path/Contents"
@@ -1041,10 +1089,13 @@ EOF
 
 @test "batch scan narrows a live same-bundle plan to the selected app bundle" {
     run env HOME="$HOME/live-bundle-only" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 selected="$HOME/Applications/Selected.app"
@@ -1104,10 +1155,13 @@ EOF
 
 @test "batch execution protects an earlier app when a later same-bundle selection changes" {
     run env HOME="$HOME/multi-selected-race" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 first="$HOME/Applications/First.app"
@@ -1194,10 +1248,13 @@ EOF
 
 @test "batch execution removes stable same-bundle multi-selections" {
     run env HOME="$HOME/multi-selected-stable" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 pkg_receipt_nonstandard_app_paths() { :; }
 
 first="$HOME/Applications/First.app"
@@ -1339,6 +1396,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -1407,6 +1467,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -1537,6 +1600,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 start_inline_spinner() { :; }
 stop_inline_spinner() { :; }
@@ -1565,6 +1631,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -1622,6 +1691,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -1984,6 +2056,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -2043,6 +2118,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 trace="$HOME/trace.log"
 launchctl() {
@@ -2091,6 +2169,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 request_sudo_access() { return 0; }
 start_inline_spinner() { :; }
@@ -2356,6 +2437,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 valid_data=$(printf '/path/one
 /path/two' | base64)
@@ -2371,6 +2455,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 if result=$(decode_file_list "not-valid-base64!!!" "TestApp" 2>/dev/null); then
     [[ -z "$result" ]] || exit 1
@@ -2388,10 +2475,13 @@ EOF
     mkdir -p "$helper/Contents"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP="$app" HELPER="$helper" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 run_with_timeout() {
     shift
@@ -2423,6 +2513,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 is_uninstall_dry_run() { return 1; }
 run_with_timeout() { shift; "$@"; }
@@ -2449,6 +2542,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 # Regression for App Cleaner 9 (#helper bootout): bundle ids are not paths,
 # so routing them through decode_file_list blanked the list and skipped the
@@ -2541,12 +2637,24 @@ EOF
         "en=VideoFusion" "zh-Hans=剪映专业版"
 
     _run_display_name_case "$(printf 'zh-Hans-CN\nen-CN')" "$app_path" "VideoFusion-macOS.app"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [ "$output" = "剪映专业版" ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [ "$output" = "剪映专业版" ] || {
+        echo "$output"
+        return 1
+    }
 
     _run_display_name_case "$(printf 'en-CN\nzh-Hans-CN')" "$app_path" "VideoFusion-macOS.app"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [ "$output" = "VideoFusion" ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [ "$output" = "VideoFusion" ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 # The stop condition matters as much as the lookup. MiaoYan.app ships a Chinese
@@ -2557,12 +2665,24 @@ EOF
     _write_display_name_fixture "$app_path" "en" "MiaoYan" "Base=-" "zh-Hans=妙言"
 
     _run_display_name_case "$(printf 'en-CN\nzh-Hans-CN')" "$app_path" "MiaoYan.app"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [ "$output" = "MiaoYan" ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [ "$output" = "MiaoYan" ] || {
+        echo "$output"
+        return 1
+    }
 
     _run_display_name_case "$(printf 'zh-Hans-CN\nen-CN')" "$app_path" "MiaoYan.app"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [ "$output" = "妙言" ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [ "$output" = "妙言" ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "uninstall_resolve_display_name keeps the unlocalized name without a language list (#1520)" {
@@ -2570,8 +2690,14 @@ EOF
     _write_display_name_fixture "$app_path" "en" "NoPrefs Base" "zh-Hans=中文名"
 
     _run_display_name_case "" "$app_path" "NoPrefs.app"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [ "$output" = "NoPrefs Base" ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [ "$output" = "NoPrefs Base" ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "uninstall_resolve_display_name keeps versioned app names when metadata is generic" {
@@ -2620,6 +2746,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 empty_data=$(printf '' | base64)
 result=$(decode_file_list "$empty_data" "TestApp" 2>/dev/null) || true
@@ -2634,6 +2763,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 bad_data=$(printf 'relative/path' | base64)
 if result=$(decode_file_list "$bad_data" "TestApp" 2>/dev/null); then
@@ -2651,6 +2783,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 test_paths="/path/to/file1
 /path/to/file2"
@@ -2673,6 +2808,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 test_home="$HOME/launchservices-refresh-home"
 mkdir -p "$test_home"
@@ -2710,6 +2848,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 test_home="$HOME/launchservices-unregister-home"
 mkdir -p "$test_home/Upper.APP" "$test_home/Plain.bundle"
@@ -3502,6 +3643,9 @@ INNER
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/Current.app"
 mkdir -p "$app_path"
@@ -3548,10 +3692,13 @@ INNER
 
 @test "batch scan stops before discovery when app sizing is interrupted" {
     run env HOME="$HOME/batch-size-interrupt" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'INNER'
+        /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/Interrupted.app"
 mkdir -p "$app_path"
@@ -3591,10 +3738,13 @@ INNER
 
 @test "batch uninstall stops before discovery and teardown when app sizing times out" {
     run env HOME="$HOME/batch-size-timeout" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'INNER'
+        /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/TimedOut.app"
 mkdir -p "$app_path"
@@ -3640,10 +3790,13 @@ INNER
     # Related size is display-only (#1383). A stalled du on leftovers must not
     # abort the batch; the leftover paths stay in the plan with size 0.
     run env HOME="$HOME/batch-related-size-timeout" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'INNER'
+        /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/TimedOut.app"
 related_path="$HOME/Library/Caches/com.example.TimedOut"
@@ -3697,10 +3850,13 @@ INNER
     # discovery then returns 124. That must narrow to the selected app, not
     # abort with "nothing was removed".
     run env HOME="$HOME/batch-leftover-timeout" PROJECT_ROOT="$PROJECT_ROOT" \
-        /bin/bash --noprofile --norc <<'INNER'
+        /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 app_path="$HOME/Applications/UniFi-Discover.app"
 mkdir -p "$app_path"
@@ -4009,6 +4165,9 @@ _bg_items_runner() {
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 launchctl() { return "${LAUNCHCTL_RC}"; }
 _uninstall_match_loaded_background_items "$DETAIL" -- "$SUCCESS_PATH"
 EOF
@@ -4038,6 +4197,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 
 helpers=$(printf 'com.wiheads.paste.helper' | base64)
 detail="Paste|/Applications/Paste.app|unknown|0|||false|false|false||||$helpers|guard"
@@ -4062,6 +4224,9 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/uninstall/batch.sh"
+# Unit discovery stays inside fixtures; HOME alone does not change system roots.
+_MOLE_UNINSTALL_LIVE_APP_ROOTS=("$HOME/Applications" "$HOME/OtherApps")
+_MOLE_UNINSTALL_LIVE_VOLUMES_ROOT="$HOME/Volumes"
 launchctl() { return 0; }
 detail="Paste|/Applications/Paste.app|com.wiheads.paste|0|||false|false|false||||"
 result=$(_uninstall_match_loaded_background_items "$detail" -- "/Applications/Paste.app")

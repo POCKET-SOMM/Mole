@@ -57,6 +57,8 @@ EOF
     run /bin/bash --noprofile --norc <<EOF
 $(prelude)
 export MOLE_CURRENT_COMMAND=clean
+# Fixture eligibility lets these tests reach the cancellation/identity sink.
+_MOLE_LOCAL_CACHE_ROOT="$SANDBOX"
 guard_rc=0
 final_guard() { return "\$guard_rc"; }
 _MOLE_SAFE_REMOVE_FINAL_GUARD=final_guard
@@ -1186,6 +1188,8 @@ EOF
     run /bin/bash --noprofile --norc <<EOF
 $(prelude)
 export MOLE_CURRENT_COMMAND=clean
+# Fixture eligibility lets these tests reach the cancellation/identity sink.
+_MOLE_LOCAL_CACHE_ROOT="$SANDBOX"
 export MOLE_CLEAN_CANCEL_STATUS=0
 rm() { return 130; }
 rc=0

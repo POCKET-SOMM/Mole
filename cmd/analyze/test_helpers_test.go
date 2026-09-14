@@ -13,6 +13,9 @@ import (
 
 func skipIfFinderUnavailable(t *testing.T) {
 	t.Helper()
+	if os.Getenv("MOLE_TEST_NO_AUTH") == "1" {
+		t.Skip("Finder integration disabled by MOLE_TEST_NO_AUTH")
+	}
 
 	if os.Getenv("CI") != "" {
 		t.Skip("Skipping Finder-dependent test in CI")

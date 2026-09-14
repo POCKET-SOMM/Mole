@@ -135,6 +135,9 @@ func startLiveScanCmdWithPolicy(path string, filesScanned, dirsScanned, bytesSca
 }
 
 func readLiveScanInitialEntries(root string, limiter *scanLimiter) ([]dirEntry, []liveScanTarget, int64, int64, []fileEntry, error) {
+	if err := localScanPath(root); err != nil {
+		return nil, nil, 0, 0, nil, err
+	}
 	children, err := os.ReadDir(root)
 	if err != nil {
 		return nil, nil, 0, 0, nil, err
@@ -155,13 +158,12 @@ func readLiveScanInitialEntries(root string, limiter *scanLimiter) ([]dirEntry, 
 
 	for _, child := range children {
 		fullPath := filepath.Join(root, child.Name())
+		if excludedLocalTree(fullPath) {
+			continue
+		}
 
 		if child.Type()&fs.ModeSymlink != 0 {
-			targetInfo, err := os.Stat(fullPath)
-			isDir := false
-			if err == nil && targetInfo.IsDir() {
-				isDir = true
-			}
+			isDir := false // Do not follow a link to classify it.
 			info, err := child.Info()
 			if err != nil {
 				continue

@@ -740,14 +740,14 @@ EOF
 # flipped every health item to safe=true before V1.34.0. The old "optional"
 # expectation outlived that decision only because the assertion sat mid-test and
 # could not fail.
-@test "prevent_network_dsstore is auto-run and described in optimize health json" {
+@test "prevent_network_dsstore requires selection and is described in optimize health json" {
 	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/check/health_json.sh"
 json="$(generate_health_json | tr '\n' ' ')"
 
-if printf '%s\n' "$json" | grep -q '"action": "prevent_network_dsstore".*"safe": true'; then
-    echo "auto-run"
+if printf '%s\n' "$json" | grep -q '"action": "prevent_network_dsstore".*"safe": false'; then
+    echo "selection-required"
 fi
 if printf '%s\n' "$json" | grep -q 'persistent Finder preference'; then
     echo "described"
@@ -755,7 +755,7 @@ fi
 EOF
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"auto-run"* ]] || return 1
+	[[ "$output" == *"selection-required"* ]] || return 1
 	[[ "$output" == *"described"* ]]
 }
 
@@ -1612,18 +1612,21 @@ EOF
 	[[ "$output" != *"UNEXPECTED_CACHE"* ]]
 }
 
-@test "optimize whitelist is loaded before system health checks" {
-	run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+@test "optimize review loads whitelist before selected task execution" {
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
-load_line=$(awk '/load_whitelist "optimize"/ { print NR; exit }' "$PROJECT_ROOT/bin/optimize.sh")
-health_line=$(awk '/^[[:space:]]*show_system_health / { print NR; exit }' "$PROJECT_ROOT/bin/optimize.sh")
-if [[ "$load_line" -lt "$health_line" ]]; then
-    echo "ordered"
-fi
+source "$PROJECT_ROOT/lib/core/common.sh"
+source "$PROJECT_ROOT/lib/optimize/review.sh"
+load_whitelist() { printf loaded > "$HOME/whitelist-loaded"; }
+optimize_outcomes_reset() { [[ -f "$HOME/whitelist-loaded" ]]; }
+log_operation_session_start() { :; }
+log_operation_session_end() { :; }
+execute_optimization() { echo UNEXPECTED_ACTION; return 1; }
+MOLE_DRY_RUN=1 mole_optimize_review
 EOF
-
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"ordered"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Preview only"* ]]
+    [[ "$output" != *"UNEXPECTED_ACTION"* ]]
 }
 
 @test "optimize interrupt cleanup disables the EXIT trap before cleanup" {

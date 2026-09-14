@@ -942,6 +942,7 @@ show_version() {
     # "write error: Broken pipe" the user never asked for. A closed reader
     # means "stop", so stop quietly.
     printf '\nMole version %s\n' "$VERSION" 2> /dev/null || return 0
+    printf 'Build: local maintenance fork (automatic updates disabled)\n' 2> /dev/null || return 0
     if [[ "$channel" == "nightly" ]]; then
         local commit
         commit=$(get_install_commit)
@@ -987,8 +988,8 @@ show_help() {
     printf "  %s%-28s%s %s\n" "$GREEN" "mo completion --dry-run" "$NC" "Preview shell completion edits"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --paths" "$NC" "Configure scan directories"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /Volumes" "$NC" "Analyze external drives only"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --force" "$NC" "Force reinstall latest stable version"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --nightly" "$NC" "Install latest unreleased main branch build"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --force" "$NC" "Show local fork update guidance (no download)"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --nightly" "$NC" "Show local fork update guidance (no download)"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo remove --dry-run" "$NC" "Preview Mole removal"
     echo
     printf "%s%s%s\n" "$BLUE" "OPTIONS" "$NC"

@@ -1,46 +1,46 @@
 #!/usr/bin/env bats
 
 setup_file() {
-	PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
-	export PROJECT_ROOT
+    PROJECT_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+    export PROJECT_ROOT
 
-	ORIGINAL_HOME="${HOME:-}"
-	export ORIGINAL_HOME
+    ORIGINAL_HOME="${HOME:-}"
+    export ORIGINAL_HOME
 
-	HOME="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-install-checksum-home.XXXXXX")"
-	export HOME
+    HOME="$(mktemp -d "${BATS_TEST_DIRNAME}/tmp-install-checksum-home.XXXXXX")"
+    export HOME
 }
 
 teardown_file() {
-	if [[ "$HOME" == "${BATS_TEST_DIRNAME}/tmp-"* ]]; then
-		rm -rf "$HOME"
-	fi
-	if [[ -n "${ORIGINAL_HOME:-}" ]]; then
-		export HOME="$ORIGINAL_HOME"
-	fi
+    if [[ "$HOME" == "${BATS_TEST_DIRNAME}/tmp-"* ]]; then
+        rm -rf "$HOME"
+    fi
+    if [[ -n "${ORIGINAL_HOME:-}" ]]; then
+        export HOME="$ORIGINAL_HOME"
+    fi
 }
 
 setup() {
-	# Safety: refuse to operate on a real home directory.
-	if [[ "$HOME" != "${BATS_TEST_DIRNAME}/tmp-"* ]]; then
-		printf 'FATAL: HOME is not a test temp dir: %s\n' "$HOME" >&2
-		return 1
-	fi
-	rm -rf "${HOME:?}"/*
-	mkdir -p "$HOME/source" "$HOME/config/bin" "$HOME/install"
-	cat > "$HOME/source/mole" << 'MOLE'
+    # Safety: refuse to operate on a real home directory.
+    if [[ "$HOME" != "${BATS_TEST_DIRNAME}/tmp-"* ]]; then
+        printf 'FATAL: HOME is not a test temp dir: %s\n' "$HOME" >&2
+        return 1
+    fi
+    rm -rf "${HOME:?}"/*
+    mkdir -p "$HOME/source" "$HOME/config/bin" "$HOME/install"
+    cat > "$HOME/source/mole" << 'MOLE'
 VERSION="1.2.3"
 MOLE
 }
 
 load_installer_binary_helpers() {
-	eval "$(sed -n '/^curl_download_with_retry()/,/^}/p' "$PROJECT_ROOT/install.sh")"
-	eval "$(sed -n '/^get_source_version()/,/^install_files()/p' "$PROJECT_ROOT/install.sh" | sed '$d')"
+    eval "$(sed -n '/^curl_download_with_retry()/,/^}/p' "$PROJECT_ROOT/install.sh")"
+    eval "$(sed -n '/^get_source_version()/,/^install_files()/p' "$PROJECT_ROOT/install.sh" | sed '$d')"
 }
 export -f load_installer_binary_helpers
 
 @test "download_binary installs release asset only after checksum verification" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -88,12 +88,12 @@ grep -q "verified-binary" "$CONFIG_DIR/bin/analyze-go"
 test -x "$CONFIG_DIR/bin/analyze-go"
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"SUCCESS:Installed analyze"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SUCCESS:Installed analyze"* ]]
 }
 
 @test "download_binary retries transient asset and checksum failures" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -154,12 +154,12 @@ download_binary "analyze"
 grep -qx "$content" "$CONFIG_DIR/bin/analyze-go"
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"SUCCESS:Installed analyze"* ]]
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"SUCCESS:Installed analyze"* ]]
 }
 
 @test "download_binary aborts on checksum mismatch without downgrading to a source build" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -218,16 +218,16 @@ if [[ -e "$CONFIG_DIR/bin/status-go" ]]; then
 fi
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" != *"TAMPERED_INSTALLED"* ]] || return 1
-	[[ "$output" != *"SOURCE_INSTALLED"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
+    [[ "$output" != *"TAMPERED_INSTALLED"* ]] || return 1
+    [[ "$output" != *"SOURCE_INSTALLED"* ]] || return 1
+    [[ "$output" == *"aborting instead of falling back"* ]]
 }
 
 @test "download_binary preserves the installed helper when verification and rebuild fail (#1193)" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -276,13 +276,13 @@ if find "$CONFIG_DIR/bin" -maxdepth 1 -name '.analyze-go.*' -print -quit | grep 
 fi
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" != *"STAGING_FILE_LEAKED"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
+    [[ "$output" != *"STAGING_FILE_LEAKED"* ]]
 }
 
 @test "download_binary aborts when SHA256SUMS has no matching asset entry" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -336,14 +336,14 @@ if download_binary "analyze"; then
 fi
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
+    [[ "$output" == *"aborting instead of falling back"* ]]
 }
 
 @test "download_binary aborts when SHA256SUMS cannot be downloaded" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -394,14 +394,14 @@ if download_binary "status"; then
 fi
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
+    [[ "$output" == *"aborting instead of falling back"* ]]
 }
 
 @test "download_binary verifies fallback release asset against fallback checksums" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -447,12 +447,12 @@ download_binary "status"
 grep -q "fallback-binary" "$CONFIG_DIR/bin/status-go"
 EOF
 
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"SUCCESS:Installed status from V1.2.2"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SUCCESS:Installed status from V1.2.2"* ]]
 }
 
 @test "download_binary aborts on fallback-tag checksum mismatch without a source build" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 INSTALL_DIR="$HOME/install"
@@ -509,21 +509,21 @@ if [[ -e "$CONFIG_DIR/bin/status-go" ]]; then
 fi
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" != *"BINARY_INSTALLED_ANYWAY"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]] || return 1
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
+    [[ "$output" != *"BINARY_INSTALLED_ANYWAY"* ]] || return 1
+    [[ "$output" == *"aborting instead of falling back"* ]] || return 1
 }
 
 @test "install_files fails closed when sudo is unavailable, even under || caller (#update-incident)" {
-	# Old moles invoke `install_files || {...}`, which disables errexit inside
-	# the function. Uncached `sudo -n` then failed on every copy while the
-	# install still reported success with the OLD entry script in place
-	# ("Updated to latest version, 1.45.0" while fetching V1.47.0).
-	# MOLE_TEST_NO_AUTH must not leak in: it would take the blocked-in-test-mode
-	# branch instead of the real ensure_sudo_ready gate. sudo is a function mock.
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_NO_AUTH=0 MOLE_TEST_MODE=0 /bin/bash --noprofile --norc << 'EOF'
+    # Old moles invoke `install_files || {...}`, which disables errexit inside
+    # the function. Uncached `sudo -n` then failed on every copy while the
+    # install still reported success with the OLD entry script in place
+    # ("Updated to latest version, 1.45.0" while fetching V1.47.0).
+    # MOLE_TEST_NO_AUTH must not leak in: it would take the blocked-in-test-mode
+    # branch instead of the real ensure_sudo_ready gate. sudo is a function mock.
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_NO_AUTH=0 MOLE_TEST_MODE=0 /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 eval "$(sed -n '/^needs_sudo() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
@@ -558,15 +558,15 @@ sudo() {
 install_files || echo "HANDLED_FAILURE"
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"HANDLED_FAILURE"* ]] || return 1
-	[[ "$output" == *"sudo -v && mo update"* ]] || return 1
-	[[ "$output" != *"SUCCESS:Installed mole"* ]] || return 1
-	[[ "$output" != *"DOWNLOAD_CALLED"* ]] || return 1
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"HANDLED_FAILURE"* ]] || return 1
+    [[ "$output" == *"sudo -v && mo update"* ]] || return 1
+    [[ "$output" != *"SUCCESS:Installed mole"* ]] || return 1
+    [[ "$output" != *"DOWNLOAD_CALLED"* ]] || return 1
 }
 
 @test "verify_installation rejects a stale entry script after an update (#update-incident)" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -uo pipefail
 
 eval "$(sed -n '/^get_source_version() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
@@ -593,15 +593,15 @@ verify_installation
 echo "UNEXPECTED_PASS"
 EOF
 
-	# verify_installation exits 1 on the mixed-version state.
-	[ "$status" -eq 1 ] || return 1
-	[[ "$output" != *"UNEXPECTED_PASS"* ]] || return 1
-	[[ "$output" == *"was not replaced"* ]] || return 1
-	[[ "$output" == *"1.45.0"* && "$output" == *"1.47.0"* ]] || return 1
+    # verify_installation exits 1 on the mixed-version state.
+    [ "$status" -eq 1 ] || return 1
+    [[ "$output" != *"UNEXPECTED_PASS"* ]] || return 1
+    [[ "$output" == *"was not replaced"* ]] || return 1
+    [[ "$output" == *"1.45.0"* && "$output" == *"1.47.0"* ]] || return 1
 }
 
 @test "installer bounds installed binary version and help probes" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 INSTALL_DIR="$HOME/install/bin"
 CONFIG_DIR="$HOME/install/config"
@@ -642,15 +642,15 @@ grep -qF -- "-k|1|5|$INSTALL_DIR/mole|--version" "$trace"
 grep -qF -- "-k|1|5|$INSTALL_DIR/mole|--help" "$trace"
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_HELP_PROBE_SUCCESS"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_HELP_PROBE_SUCCESS"* ]]
 }
 
 @test "installer rejects macOS older than the release minimum before setup" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 eval "$(sed -n '/^check_requirements()/,/^}/p' "$PROJECT_ROOT/install.sh")"
 log_error() { printf 'ERROR:%s\n' "$*"; }
@@ -674,29 +674,35 @@ FAKE_MACOS_VERSION=12.0 check_requirements
 printf 'SUPPORTED=yes\n'
 EOF
 
-	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"OLD_RC=1"* ]] || return 1
-	[[ "$output" == *"requires macOS 12 or newer"* ]] || return 1
-	[[ "$output" == *"SUPPORTED=yes"* ]] || return 1
+    [[ "$status" -eq 0 ]] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"OLD_RC=1"* ]] || return 1
+    [[ "$output" == *"requires macOS 12 or newer"* ]] || return 1
+    [[ "$output" == *"SUPPORTED=yes"* ]] || return 1
 }
 
 @test "fresh install checks platform support before resolving remote source" {
-	run awk '
+    run awk '
         /^perform_install\(\) \{/ { in_install = 1; next }
         in_install && /^}/ { exit seen_check ? 0 : 1 }
         in_install && /check_requirements/ { seen_check = 1; next }
         in_install && /resolve_source_dir/ && !seen_check { exit 1 }
     ' "$PROJECT_ROOT/install.sh"
 
-	[ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "installer shell fallback stops TERM-ignoring verification probes" {
-	local timeout_cmd="timeout"
-	command -v timeout > /dev/null 2>&1 || timeout_cmd="gtimeout"
-	command -v "$timeout_cmd" > /dev/null 2>&1 || skip "timeout command unavailable"
+    local timeout_cmd="timeout"
+    command -v timeout > /dev/null 2>&1 || timeout_cmd="gtimeout"
+    command -v "$timeout_cmd" > /dev/null 2>&1 || skip "timeout command unavailable"
 
-	run "$timeout_cmd" 3 env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" PATH="/usr/bin:/bin" /bin/bash --noprofile --norc << 'EOF'
+    run "$timeout_cmd" 3 env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" PATH="/usr/bin:/bin" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 eval "$(sed -n '/^run_install_probe_with_timeout() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
 run_install_probe_with_timeout 1 /bin/bash -c 'exit 0' || {
@@ -709,19 +715,19 @@ if run_install_probe_with_timeout 0.1 /bin/bash -c 'trap "" TERM; sleep 5 & wait
 fi
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_FAST_PROBE_FAILURE"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_PROBE_SUCCESS"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_FAST_PROBE_FAILURE"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_PROBE_SUCCESS"* ]]
 }
 
 @test "standalone installer cleans source temp under trailing-slash TMPDIR" {
-	local tmp_root="$HOME/installer-tmp"
-	mkdir -p "$tmp_root"
+    local tmp_root="$HOME/installer-tmp"
+    mkdir -p "$tmp_root"
 
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TMPDIR="$tmp_root/" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TMPDIR="$tmp_root/" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 log_error() { printf 'ERROR:%s\n' "$*"; }
 stop_line_spinner() { :; }
@@ -744,58 +750,64 @@ fi
 [[ -d "${TMPDIR%/}" ]] || exit 1
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_TEMP_ROOT_REMOVAL"* ]] || return 1
-	[[ "$output" != *"safe_rm: refusing to remove non-temp path"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_TEMP_ROOT_REMOVAL"* ]] || return 1
+    [[ "$output" != *"safe_rm: refusing to remove non-temp path"* ]] || return 1
 }
 
-@test "installer source temp stays removable by safe_rm when TMPDIR is unset" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+@test "installer refuses absent local sources without fetching a replacement" {
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
-unset TMPDIR
 log_error() { printf 'ERROR:%s\n' "$*"; }
-stop_line_spinner() { :; }
-release_install_lock() { :; }
-
-eval "$(sed -n '/^safe_rm() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
-eval "$(sed -n '/^cleanup_installer() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
-
-# Evaluate install.sh's own source-download mktemp lines with TMPDIR unset,
-# then run the same EXIT-trap cleanup path against the created directory.
-# Anchor on the assignment rather than the phrase: a comment above it that
-# mentions `mktemp -d` would otherwise be scraped and eval'd to nothing,
-# leaving INSTALL_SOURCE_TMP unset and the failure looking like a real one.
-tmp_lines="$(sed -n '/^[[:space:]]*tmp="\$(mktemp -d/{p;n;p;q;}' "$PROJECT_ROOT/install.sh" | sed 's/^[[:space:]]*//')"
-[[ -n "$tmp_lines" ]] || { echo "NO_MKTEMP_LINES"; exit 1; }
-eval "$tmp_lines"
-source_tmp="$INSTALL_SOURCE_TMP"
-printf 'downloaded source\n' > "$source_tmp/payload"
-cleanup_installer
-
-[[ -z "$INSTALL_SOURCE_TMP" ]] || exit 1
-[[ ! -e "$source_tmp" ]] || exit 1
+sed -n '/^resolve_source_dir() {/,/^}/p' "$PROJECT_ROOT/install.sh" > "$HOME/resolver.sh"
+source "$HOME/resolver.sh"
+declare -f resolve_source_dir > /dev/null
+curl() { printf attempted >> "$HOME/fetched"; return 99; }
+git() { printf attempted >> "$HOME/fetched"; return 99; }
+mktemp() { printf attempted >> "$HOME/fetched"; return 99; }
+# Positive control: the request canary really records a call.
+curl || [[ $? -eq 99 ]]
+[[ -s "$HOME/fetched" ]]
+: > "$HOME/fetched"
+SOURCE_DIR=""; CLEAN_SOURCE_DIR=""
+rc=0; resolve_source_dir || rc=$?
+[[ $rc -eq 1 && -z "$SOURCE_DIR" && ! -s "$HOME/fetched" ]]
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"safe_rm: refusing to remove non-temp path"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"requires a reviewed local source checkout"* ]] || return 1
 }
 
-@test "source download mktemp template derives from TMPDIR" {
-	run grep -qE 'mktemp -d "\$\{TMPDIR:-/tmp\}/mole\.XXXXXX"' "$PROJECT_ROOT/install.sh"
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
+@test "installer resolves an explicit local checkout without a source download" {
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+set -euo pipefail
+sed -n '/^resolve_source_dir() {/,/^}/p' "$PROJECT_ROOT/install.sh" > "$HOME/resolver.sh"
+source "$HOME/resolver.sh"
+curl() { printf attempted >> "$HOME/fetched"; return 99; }
+git() { printf attempted >> "$HOME/fetched"; return 99; }
+log_error() { printf 'ERROR:%s\n' "$*"; }
+SOURCE_DIR="$HOME/source"; CLEAN_SOURCE_DIR=""
+resolve_source_dir
+[[ "$SOURCE_DIR" == "$HOME/source" && ! -e "$HOME/fetched" ]]
+SOURCE_DIR=""; CLEAN_SOURCE_DIR="$HOME/source"
+resolve_source_dir
+[[ "$SOURCE_DIR" == "$HOME/source" && ! -e "$HOME/fetched" ]]
+EOF
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "standalone installer serializes writers with the stable install lock" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    /bin/ps -p "$$" -o lstart= > /dev/null 2>&1 || skip "native lock integration requires process-start inspection; sandbox denies ps"
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 INSTALL_DIR="$HOME/install/bin"
 INSTALL_LOCK_PATH=""
@@ -979,21 +991,21 @@ grep -qF 'sudo -v < /dev/tty > /dev/tty 2> /dev/tty' "$PROJECT_ROOT/install.sh"
 grep -qF '[[ -r /dev/tty && -w /dev/tty ]] || return 1' "$PROJECT_ROOT/install.sh"
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_CONCURRENT_INSTALL_LOCK"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_EXTERNAL_LOCK_BYPASS"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_LOCK_SYMLINK_FOLLOW"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_LOCK_FIFO_OPEN"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_INHERITED_INSTALL_LOCK_ACL"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_WRITABLE_PARENT_ACL_ACCEPTED"* ]] || return 1
-	[[ "$output" != *"UNEXPECTED_PRIVILEGED_GROUP_WRITABLE_PREFIX_ACCEPTED"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_CONCURRENT_INSTALL_LOCK"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_EXTERNAL_LOCK_BYPASS"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_LOCK_SYMLINK_FOLLOW"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_LOCK_FIFO_OPEN"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_INHERITED_INSTALL_LOCK_ACL"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_WRITABLE_PARENT_ACL_ACCEPTED"* ]] || return 1
+    [[ "$output" != *"UNEXPECTED_PRIVILEGED_GROUP_WRITABLE_PREFIX_ACCEPTED"* ]] || return 1
 }
 
 @test "standalone installer normalizes a relative prefix before lock validation" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 cd "$HOME"
 INSTALL_DIR="relative/bin"
@@ -1011,18 +1023,18 @@ if install_lock_has_unsafe_ancestor false; then
 fi
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"UNEXPECTED_RELATIVE_PREFIX_REJECTED_AFTER_NORMALIZATION"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_RELATIVE_PREFIX_REJECTED_AFTER_NORMALIZATION"* ]]
 }
 
 @test "write_install_channel_metadata succeeds for stable channel with empty commit hash" {
-	# Regression: the previous `[[ -n "$h" ]] && printf` form returned 1
-	# whenever the commit hash was empty (always the case on stable), making
-	# the block redirect look like an I/O failure and tripping the warning.
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    # Regression: the previous `[[ -n "$h" ]] && printf` form returned 1
+    # whenever the commit hash was empty (always the case on stable), making
+    # the block redirect look like an I/O failure and tripping the warning.
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 CONFIG_DIR="$HOME/config"
 mkdir -p "$CONFIG_DIR"
@@ -1060,11 +1072,11 @@ if ls "$CONFIG_DIR"/install_channel.?????? 2>/dev/null | grep -q .; then
 fi
 EOF
 
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ]
 }
 
 @test "main source archives are pinned when a commit is known" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 eval "$(sed -n '/^source_archive_url()/,/^}/p' "$PROJECT_ROOT/install.sh")"
 
@@ -1075,14 +1087,14 @@ commit="0123456789abcdef0123456789abcdef01234567"
 [[ "$(source_archive_url V1.2.3 "")" == "https://github.com/tw93/mole/archive/refs/tags/V1.2.3.tar.gz" ]] || exit 1
 EOF
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "installer source-build guidance names the main branch explicitly" {
-	run awk '
+    run awk '
 		/^[[:space:]]*#/ { next }
 		/piping from curl:/ {
 			seen = 1
@@ -1091,14 +1103,14 @@ EOF
 		END { exit (!seen || bad) }
 	' "$PROJECT_ROOT/install.sh"
 
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "verify_release_attestation maps gh availability and result to 2/0/1" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 eval "$(sed -n '/^verify_release_attestation()/,/^}/p' "$PROJECT_ROOT/install.sh")"
@@ -1148,11 +1160,11 @@ grep -Fq "attestation verify $target --repo tw93/Mole --deny-self-hosted-runners
 rm -rf "$stubdir" "$target" "$GH_TRACE"
 EOF
 
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ]
 }
 
 @test "verify_release_asset_checksum enforces attestation policy gate" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 
 eval "$(sed -n '/^extract_release_checksum()/,/^}/p' "$PROJECT_ROOT/install.sh")"
@@ -1194,15 +1206,15 @@ out="$(verify_release_asset_checksum V1.0.0 "$asset" "$file")" && rc=0 || rc=$?
 rm -f "$file"
 EOF
 
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ]
 }
 
 @test "teardown never turns a finished install into a failure" {
-	# cleanup_installer runs from the EXIT trap under `set -e`, so a refusal
-	# inside it used to become the script's exit status and report a verified
-	# install as failed (#1343). The refusal still prints; it just no longer
-	# decides the verdict.
-	run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    # cleanup_installer runs from the EXIT trap under `set -e`, so a refusal
+    # inside it used to become the script's exit status and report a verified
+    # install as failed (#1343). The refusal still prints; it just no longer
+    # decides the verdict.
+    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 log_error() { printf 'ERROR:%s\n' "$*"; }
 stop_line_spinner() { :; }
@@ -1215,52 +1227,46 @@ INSTALL_SOURCE_TMP="/not/a/temp/path"
 trap 'cleanup_installer' EXIT
 exit 0
 EOF
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"refusing to remove"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"refusing to remove"* ]] || return 1
 }
 
-@test "the source temp dir and safe_rm agree on the temp root" {
-	# A bare `mktemp -d` ignores TMPDIR on macOS, so the creator and the
-	# remover disagreed whenever TMPDIR was unset or pointed elsewhere.
-	# Assert the behaviour, not the template: create the dir the way the
-	# installer does, then hand it to the real safe_rm.
-	run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+@test "safe_rm accepts owned scratch directories across supported temp roots" {
+    # Remote source staging is disabled, but retained verification helpers
+    # still need safe removal of their own temporary artifacts.
+    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 log_error() { printf 'ERROR:%s\n' "$*"; }
 eval "$(sed -n '/^safe_rm() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
-# Anchor on the assignment, not the phrase: a comment that merely mentions
-# `mktemp -d` would otherwise be picked up and eval'd to nothing.
-mktemp_line=$(grep -m1 -E '^[[:space:]]*tmp="\$\(mktemp -d' "$PROJECT_ROOT/install.sh" | sed 's/^[[:space:]]*//')
-[[ -n "$mktemp_line" ]] || { echo "NO_MKTEMP_LINE"; exit 1; }
-
 for scenario in unset darwin slash; do
     case "$scenario" in
         unset)  unset TMPDIR ;;
         darwin) TMPDIR="$(getconf DARWIN_USER_TEMP_DIR)"; export TMPDIR ;;
         slash)  TMPDIR="$(getconf DARWIN_USER_TEMP_DIR)"; TMPDIR="${TMPDIR%/}/"; export TMPDIR ;;
     esac
-    eval "$mktemp_line"
+    tmp=$(mktemp -d "${TMPDIR:-/tmp}/mole-scratch.XXXXXX")
     [[ -d "$tmp" ]] || { echo "NO_DIR:$scenario"; exit 1; }
     safe_rm "$tmp" || { echo "REFUSED:$scenario"; exit 1; }
     [[ ! -e "$tmp" ]] || { echo "LEFT_BEHIND:$scenario"; exit 1; }
 done
 EOF
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"REFUSED"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"REFUSED"* ]] || return 1
 }
 
 @test "the install lock still works where /usr/bin/lockf was never shipped" {
-	# lockf only ships with newer macOS. Requiring it made both install and
-	# update exit before writing a file on every older release (#1348), so the
-	# absent case falls back to an atomic mkdir. Simulate absence by pointing
-	# the check at a path that cannot exist.
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+    /bin/ps -p "$$" -o lstart= > /dev/null 2>&1 || skip "native lock integration requires process-start inspection; sandbox denies ps"
+    # lockf only ships with newer macOS. Requiring it made both install and
+    # update exit before writing a file on every older release (#1348), so the
+    # absent case falls back to an atomic mkdir. Simulate absence by pointing
+    # the check at a path that cannot exist.
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 patched="$HOME/install-nolockf.sh"
 sed 's#/usr/bin/lockf#/usr/bin/lockf_absent_for_test#g' "$PROJECT_ROOT/install.sh" > "$patched"
@@ -1273,7 +1279,7 @@ INSTALL_LOCK_PATH=""; INSTALL_LOCK_CONTROL=""; INSTALL_LOCK_HOLDER_PID=""; INSTA
 log_error() { printf 'ERROR:%s\n' "$*"; }
 # awk, not sed: a BSD sed address built from a function name trips over the
 # parentheses for some of these, and the failure is a silent missing function.
-for fn in install_lock_command install_lock_has_unsafe_ancestor install_lock_prepare_dir \
+for fn in safe_rm install_lock_command install_lock_has_unsafe_ancestor install_lock_prepare_dir \
 	install_lock_read_owner install_lock_remove_control install_lock_process_start \
 	install_lock_current_shell_pid install_lock_reauthenticate acquire_install_lock \
 	release_install_lock; do
@@ -1296,51 +1302,51 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 [[ ! -d "$mutex" ]] || { echo "MUTEX_LEAKED"; exit 1; }
 EOF
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" != *"DOUBLE_ACQUIRE"* ]] || return 1
-	[[ "$output" != *"MUTEX_LEAKED"* ]] || return 1
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"DOUBLE_ACQUIRE"* ]] || return 1
+    [[ "$output" != *"MUTEX_LEAKED"* ]] || return 1
 }
 
 @test "the update path never runs brew inside the pre-authed window" {
-	# brew's entry point resets the sudo timestamp as a security measure;
-	# running it after pre-auth killed the handed-over ticket within five
-	# seconds (field ticket watchdog) and forced a second password prompt
-	# on every update. Homebrew ownership is decided from the Cellar on
-	# disk instead, so brew itself never runs in that window.
-	# Comment lines are stripped first: the invariant is that install.sh does
-	# not RUN this, and a comment explaining why it was dropped is not a call.
-	# A bare grep flagged exactly that comment and read as a real regression.
-	if command grep -vE '^[[:space:]]*#' "$PROJECT_ROOT/install.sh" |
-		command grep -q 'brew list mole'; then
-		echo "brew list mole is back in install.sh"
-		return 1
-	fi
-	command grep -q 'homebrew_owns_mole()' "$PROJECT_ROOT/install.sh" || {
-		echo "cellar-based ownership check missing"
-		return 1
-	}
+    # brew's entry point resets the sudo timestamp as a security measure;
+    # running it after pre-auth killed the handed-over ticket within five
+    # seconds (field ticket watchdog) and forced a second password prompt
+    # on every update. Homebrew ownership is decided from the Cellar on
+    # disk instead, so brew itself never runs in that window.
+    # Comment lines are stripped first: the invariant is that install.sh does
+    # not RUN this, and a comment explaining why it was dropped is not a call.
+    # A bare grep flagged exactly that comment and read as a real regression.
+    if command grep -vE '^[[:space:]]*#' "$PROJECT_ROOT/install.sh" |
+        command grep -q 'brew list mole'; then
+        echo "brew list mole is back in install.sh"
+        return 1
+    fi
+    command grep -q 'homebrew_owns_mole()' "$PROJECT_ROOT/install.sh" || {
+        echo "cellar-based ownership check missing"
+        return 1
+    }
 
-	# The helper itself: a Cellar dir under HOMEBREW_PREFIX means owned,
-	# no Cellar anywhere means not owned, and brew is never executed.
-	eval "$(sed -n '/^homebrew_owns_mole()/,/^}/p' "$PROJECT_ROOT/install.sh")"
-	local fake_prefix="$BATS_TEST_TMPDIR/fakebrew"
-	mkdir -p "$fake_prefix/Cellar/mole"
-	HOMEBREW_PREFIX="$fake_prefix" homebrew_owns_mole || {
-		echo "cellar dir not detected"
-		return 1
-	}
-	if HOMEBREW_PREFIX="$BATS_TEST_TMPDIR/empty" homebrew_owns_mole 2> /dev/null &&
-		[[ ! -d /opt/homebrew/Cellar/mole && ! -d /usr/local/Cellar/mole ]]; then
-		echo "claimed ownership with no cellar anywhere"
-		return 1
-	fi
+    # The helper itself: a Cellar dir under HOMEBREW_PREFIX means owned,
+    # no Cellar anywhere means not owned, and brew is never executed.
+    eval "$(sed -n '/^homebrew_owns_mole()/,/^}/p' "$PROJECT_ROOT/install.sh")"
+    local fake_prefix="$BATS_TEST_TMPDIR/fakebrew"
+    mkdir -p "$fake_prefix/Cellar/mole"
+    HOMEBREW_PREFIX="$fake_prefix" homebrew_owns_mole || {
+        echo "cellar dir not detected"
+        return 1
+    }
+    if HOMEBREW_PREFIX="$BATS_TEST_TMPDIR/empty" homebrew_owns_mole 2> /dev/null &&
+        [[ ! -d /opt/homebrew/Cellar/mole && ! -d /usr/local/Cellar/mole ]]; then
+        echo "claimed ownership with no cellar anywhere"
+        return 1
+    fi
 }
 
 @test "install.sh refuses a root invocation before writing anything" {
-	run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF_INNER'
+    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF_INNER'
 set -euo pipefail
 eval "$(sed -n '/^refuse_root_invocation() {/,/^}/p' "$PROJECT_ROOT/install.sh")"
 if refuse_root_invocation 0 2> "$HOME/root.err"; then
@@ -1351,14 +1357,14 @@ fi
 cat "$HOME/root.err"
 refuse_root_invocation 501 && echo "USER_ACCEPTED"
 EOF_INNER
-	[ "$status" -eq 0 ] || {
-		echo "$output"
-		return 1
-	}
-	[[ "$output" == *"ROOT_REFUSED"* ]] || return 1
-	[[ "$output" == *"Run Mole without sudo"* ]] || return 1
-	[[ "$output" == *"USER_ACCEPTED"* ]] || return 1
-	# The gate must run at top level, before any install work starts.
-	run grep -Fn "refuse_root_invocation \"\${EUID:-0}\" || exit 1" "$PROJECT_ROOT/install.sh"
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" == *"ROOT_REFUSED"* ]] || return 1
+    [[ "$output" == *"Run Mole without sudo"* ]] || return 1
+    [[ "$output" == *"USER_ACCEPTED"* ]] || return 1
+    # The gate must run at top level, before any install work starts.
+    run grep -Fn "refuse_root_invocation \"\${EUID:-0}\" || exit 1" "$PROJECT_ROOT/install.sh"
+    [ "$status" -eq 0 ]
 }

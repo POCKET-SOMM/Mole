@@ -311,14 +311,16 @@ func runJSONMode() {
 
 	data, err := collector.Collect()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error collecting metrics: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "incomplete metrics: %v\n", err)
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(data); err != nil {
 		fmt.Fprintf(os.Stderr, "error encoding JSON: %v\n", err)
+		os.Exit(1)
+	}
+	if err != nil {
 		os.Exit(1)
 	}
 }

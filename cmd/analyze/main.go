@@ -19,7 +19,9 @@ import (
 )
 
 var (
-	jsonMode = flag.Bool("json", false, "output analysis as JSON instead of TUI")
+	jsonMode       = flag.Bool("json", false, "output analysis as JSON instead of TUI")
+	inventoryMode  = flag.Bool("inventory", false, "read-only bounded storage inventory with local growth comparison (JSON)")
+	duplicatesMode = flag.Bool("duplicates", false, "read-only bounded content comparison within an explicit path (JSON)")
 )
 
 // usageText is the help every other Mole subcommand prints by hand. The Go flag
@@ -31,6 +33,8 @@ Explore disk usage. Without PATH, scans a machine-wide overview.
 
 Options:
   --json          Output the analysis as JSON instead of the interactive TUI
+  --inventory     Inspect local storage and compare completed explicit scans (JSON)
+  --duplicates    Compare file contents within PATH; never delete duplicates (JSON)
   -h, --help      Show this help message
 
 Examples:
@@ -73,7 +77,24 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if !isOverview {
+		if err := localScanPath(abs); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 
+	if *inventoryMode || *duplicatesMode {
+		if *duplicatesMode && isOverview {
+			fmt.Fprintln(os.Stderr, "Duplicate inspection requires an explicit local directory")
+			os.Exit(1)
+		}
+		if err := runStorageInventory(abs, isOverview, *duplicatesMode, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	go pruneAnalyzerCache()
 	if *jsonMode {
 		runJSONMode(abs, isOverview)

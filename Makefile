@@ -1,6 +1,6 @@
 # Makefile for Mole
 
-.PHONY: all build clean check format test test-go verify release release-amd64 release-arm64 mod-download
+.PHONY: all build clean check format test test-go verify release release-amd64 release-arm64 package-candidate mod-download
 
 # Output directory
 BIN_DIR := bin
@@ -38,10 +38,10 @@ mod-download:
 	exit 1
 
 # Local build (current architecture)
-build: mod-download
+build:
 	@echo "Building for local architecture..."
-	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-go $(ANALYZE_SRC)
-	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-go $(STATUS_SRC)
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-go $(ANALYZE_SRC)
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-go $(STATUS_SRC)
 
 check:
 	./scripts/check.sh --no-format
@@ -53,21 +53,26 @@ test:
 	MOLE_TEST_NO_AUTH=1 ./scripts/test.sh
 
 test-go:
-	$(GO) test ./...
+	MOLE_TEST_NO_AUTH=1 bash scripts/test_sandbox.sh $(GO) test ./...
 
 verify: check test-go
 
-# Release build targets. Keep these pure-Go so the macOS SDK on the
-# release runner cannot raise the Mach-O minimum OS version via cgo.
-release-amd64: mod-download
-	@echo "Building release binaries (amd64)..."
-	$(RELEASE_GO_ENV) GOOS=darwin GOARCH=amd64 $(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-darwin-amd64 $(ANALYZE_SRC)
-	$(RELEASE_GO_ENV) GOOS=darwin GOARCH=amd64 $(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-darwin-amd64 $(STATUS_SRC)
+# New output paths only; never replace or publish an existing candidate.
+package-candidate:
+	@test -n "$(OUTPUT)" || { echo 'Usage: make package-candidate OUTPUT=/absolute/new/directory'; exit 1; }
+	MOLE_TEST_NO_AUTH=1 bash scripts/test_sandbox.sh python3 scripts/package_release.py "$(OUTPUT)"
 
-release-arm64: mod-download
+# Manual cross-builds only; these do not tag, upload or publish anything.
+# Prepared dependencies are required. Keep pure-Go to avoid SDK-driven minOS changes.
+release-amd64:
+	@echo "Building release binaries (amd64)..."
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(RELEASE_GO_ENV) GOOS=darwin GOARCH=amd64 $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-darwin-amd64 $(ANALYZE_SRC)
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(RELEASE_GO_ENV) GOOS=darwin GOARCH=amd64 $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-darwin-amd64 $(STATUS_SRC)
+
+release-arm64:
 	@echo "Building release binaries (arm64)..."
-	$(RELEASE_GO_ENV) GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-darwin-arm64 $(ANALYZE_SRC)
-	$(RELEASE_GO_ENV) GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-darwin-arm64 $(STATUS_SRC)
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(RELEASE_GO_ENV) GOOS=darwin GOARCH=arm64 $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-darwin-arm64 $(ANALYZE_SRC)
+	GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off $(RELEASE_GO_ENV) GOOS=darwin GOARCH=arm64 $(GO) build -mod=readonly -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-darwin-arm64 $(STATUS_SRC)
 
 clean:
 	@echo "Cleaning binaries..."

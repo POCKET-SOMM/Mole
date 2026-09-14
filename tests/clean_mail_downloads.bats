@@ -164,6 +164,7 @@ SHIM
         /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/bin/clean.sh"
+pgrep() { return 1; }
 # Stub every other section so the run reaches the summary quickly; only
 # clean_user_essentials (which contains _clean_mail_downloads) stays real.
 for fn in clean_finder_metadata clean_app_caches clean_browsers \

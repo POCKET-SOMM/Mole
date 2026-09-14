@@ -112,6 +112,7 @@ compact_purge_scan_path() {
 start_purge() {
     # Set current command for operation logging
     export MOLE_CURRENT_COMMAND="purge"
+    mole_capture_invoking_project || return 2
     log_operation_session_start "purge"
 
     # Clear screen for better UX

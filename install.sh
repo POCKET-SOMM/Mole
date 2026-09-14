@@ -700,105 +700,9 @@ resolve_source_dir() {
         return 0
     fi
 
-    local tmp
-    # Derive the directory from the same TMPDIR safe_rm gates on. A bare
-    # `mktemp -d` ignores TMPDIR on macOS and always lands in the Darwin
-    # per-user temp dir, so with TMPDIR unset the two disagreed and cleanup
-    # refused to remove what the installer had just created (#1343). Homebrew
-    # strips TMPDIR from the environment, which made that deterministic there.
-    tmp="$(mktemp -d "${TMPDIR:-/tmp}/mole.XXXXXX")"
-    INSTALL_SOURCE_TMP="$tmp"
+    log_error "This fork requires a reviewed local source checkout. No upstream download was attempted."
+    return 1
 
-    local branch="${MOLE_VERSION:-}"
-    if [[ -z "$branch" ]]; then
-        branch="$(get_latest_release_tag || true)"
-    fi
-    if [[ -z "$branch" ]]; then
-        branch="$(get_latest_release_tag_from_git || true)"
-    fi
-    if [[ -z "$branch" ]]; then
-        # Both release-tag lookups failed (typically GitHub API rate limits
-        # while codeload still works). Keep the install usable, but say
-        # loudly that this is now a nightly source install, not a release.
-        log_warning "Could not resolve the latest release tag; installing from main (nightly source)"
-        branch="main"
-    fi
-    if [[ "$branch" != "main" && "$branch" != "dev" ]]; then
-        branch="$(normalize_release_tag "$branch")"
-    fi
-    local source_commit=""
-    if [[ "$branch" == "main" ]]; then
-        source_commit="${MOLE_INSTALL_COMMIT:-}"
-        if [[ -n "$source_commit" && ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
-            log_error "Invalid pinned source commit"
-            exit 1
-        fi
-        if [[ -z "$source_commit" ]]; then
-            source_commit=$(get_remote_main_commit_hash || true)
-        fi
-        if [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
-            SOURCE_COMMIT_HASH="$source_commit"
-        fi
-    fi
-    local url
-    url=$(source_archive_url "$branch" "$source_commit")
-
-    start_line_spinner "Fetching Mole source, ${branch}..."
-    if command -v curl > /dev/null 2>&1; then
-        if curl_download_with_retry "$url" "$tmp/mole.tar.gz" 2> /dev/null; then
-            if tar -xzf "$tmp/mole.tar.gz" -C "$tmp" 2> /dev/null; then
-                stop_line_spinner
-
-                local extracted_dir
-                extracted_dir=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-
-                if [[ -n "$extracted_dir" && -f "$extracted_dir/mole" ]]; then
-                    SOURCE_DIR="$extracted_dir"
-                    return 0
-                fi
-            fi
-        else
-            stop_line_spinner
-            # Only exit early for version tags (not for main/dev branches)
-            if [[ "$branch" != "main" && "$branch" != "dev" ]]; then
-                log_error "Failed to fetch version ${branch}. Check if tag exists."
-                exit 1
-            fi
-        fi
-    fi
-    stop_line_spinner
-
-    start_line_spinner "Cloning Mole source..."
-    if command -v git > /dev/null 2>&1; then
-        local clone_succeeded=false
-        if [[ -n "$source_commit" ]]; then
-            if git init -q "$tmp/mole" > /dev/null 2>&1 &&
-                git -C "$tmp/mole" remote add origin https://github.com/tw93/mole.git > /dev/null 2>&1 &&
-                git -C "$tmp/mole" fetch -q --depth=1 origin "$source_commit" > /dev/null 2>&1 &&
-                git -C "$tmp/mole" checkout -q --detach FETCH_HEAD > /dev/null 2>&1; then
-                clone_succeeded=true
-            fi
-        else
-            local git_args=("--depth=1")
-            if [[ "$branch" != "main" ]]; then
-                git_args+=("--branch" "$branch")
-            fi
-            if git clone "${git_args[@]}" https://github.com/tw93/mole.git "$tmp/mole" > /dev/null 2>&1; then
-                clone_succeeded=true
-            fi
-        fi
-
-        if [[ "$clone_succeeded" == "true" ]]; then
-            stop_line_spinner
-            SOURCE_DIR="$tmp/mole"
-            SOURCE_COMMIT_HASH=$(git -C "$SOURCE_DIR" rev-parse HEAD 2> /dev/null || true)
-            return 0
-        fi
-    fi
-    stop_line_spinner
-
-    log_error "Failed to fetch source files. Ensure curl or git is available."
-    exit 1
 }
 
 # Version helpers
@@ -1204,8 +1108,8 @@ check_requirements() {
             echo ""
             exit 1
         else
-            log_warning "Cleaning up stale Homebrew installation..."
-            brew uninstall --force mole > /dev/null 2>&1 || true
+            log_error "Homebrew records a Mole installation. Review that installation separately before proceeding."
+            return 1
         fi
     fi
 
@@ -1281,6 +1185,18 @@ download_binary() {
     local target_path="$CONFIG_DIR/bin/${binary_name}-go"
     local staged_path
     staged_path=$(mktemp "$CONFIG_DIR/bin/.${binary_name}-go.XXXXXX") || return 1
+    if [[ -f "$SOURCE_DIR/lib/core/local_policy.sh" ]]; then
+        # Build the reviewed local source, never pair this shell fork with an
+        # upstream or stale prebuilt helper. Dependencies must already exist.
+        if GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off \
+            build_binary_from_source "$binary_name" "$staged_path" &&
+            install_staged_binary "$staged_path" "$target_path"; then
+            return 0
+        fi
+        rm -f "$staged_path" # SAFE: Remove only this invocation's mktemp staging file after a failed local build.
+        log_error "Local helper build failed. Prepare the supported Go toolchain and pinned modules, then retry."
+        return 1
+    fi
     local arch
     arch=$(uname -m)
     local arch_suffix="amd64"
@@ -1784,7 +1700,8 @@ trap 'cleanup_installer; exit 130' INT TERM
 
 case "$ACTION" in
     update)
-        perform_update
+        printf '%s\n' 'This local fork does not download or replace itself.' \
+            'Review and build a local checkout before explicitly installing it.'
         ;;
     *)
         perform_install

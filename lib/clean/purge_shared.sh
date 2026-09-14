@@ -55,13 +55,13 @@ readonly MOLE_PURGE_TARGETS=(
 readonly MOLE_PURGE_DEFAULT_SEARCH_PATHS=(
     "$HOME/www"
     "$HOME/dev"
+    "$HOME/Developer"
     "$HOME/Projects"
     "$HOME/GitHub"
     "$HOME/Code"
     "$HOME/Workspace"
     "$HOME/Repos"
     "$HOME/Development"
-    "$HOME/Library/CloudStorage"
     # AI agent worktree containers. These sit under dot directories, which
     # discover_project_dirs cannot reach: it globs "$HOME"/*/ and
     # is_project_container rejects any basename starting with a dot. Listing

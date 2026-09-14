@@ -140,7 +140,7 @@ teardown() {
     run /bin/bash -c "source '$PROJECT_ROOT/lib/core/common.sh'; validate_path_for_deletion '$TEST_DIR/valid'"
     [ "$status" -eq 0 ]
 
-    run /bin/bash -c "source '$PROJECT_ROOT/lib/core/common.sh'; validate_path_for_deletion '$HOME/Library/Caches/com.example.app/cache.db'"
+    run /bin/bash -c "source '$PROJECT_ROOT/lib/core/common.sh'; ps() { printf 'PID PPID COMM ARGS\n'; }; validate_path_for_deletion '$HOME/Library/Caches/com.example.app/cache.db'"
     [ "$status" -eq 0 ]
 }
 
@@ -442,7 +442,7 @@ EOF
     mkdir -p "$(dirname "$partial")"
     printf 'partial\n' > "$partial"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 trace_file=$(mktemp)
@@ -467,7 +467,7 @@ EOF
     local record_state
     for record_state in root nonroot; do
         run env PROJECT_ROOT="$PROJECT_ROOT" record_state="$record_state" \
-            /bin/bash --noprofile --norc <<'EOF'
+            /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 lsof() {
@@ -502,7 +502,7 @@ EOF
     local lsof_state
     for lsof_state in idle active; do
         run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-            lsof_state="$lsof_state" /bin/bash --noprofile --norc <<'EOF'
+            lsof_state="$lsof_state" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -531,7 +531,7 @@ EOF
     printf 'partial\n' > "$partial"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -555,7 +555,7 @@ EOF
     printf 'partial\n' > "$partial"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -596,7 +596,7 @@ EOF
     printf 'partial\n' > "$partial"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -636,7 +636,7 @@ EOF
     printf 'db\n' > "$database"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" database="$database" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -677,7 +677,7 @@ EOF
     printf 'original\n' > "$partial"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -715,7 +715,7 @@ EOF
     printf 'original\n' > "$database"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" database="$database" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -756,7 +756,7 @@ EOF
     printf 'db\n' > "$database"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" partial="$partial" database="$database" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -783,7 +783,7 @@ EOF
 
     local path
     for path in "$app_cache" "$group_cache"; do
-        run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" path="$path" /bin/bash --noprofile --norc <<'EOF'
+        run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" path="$path" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -807,7 +807,7 @@ EOF
 
     local probe_rc
     for probe_rc in 2 124; do
-        run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" probe_rc="$probe_rc" /bin/bash --noprofile --norc <<'EOF'
+        run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" probe_rc="$probe_rc" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -830,7 +830,7 @@ EOF
         fi
     done
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -839,7 +839,7 @@ validate_path_for_deletion "$cache_dir"
 EOF
     [ "$status" -eq 1 ] || return 1
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -848,7 +848,7 @@ validate_path_for_deletion "$cache_dir"
 EOF
     [ "$status" -eq 1 ] || return 1
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -862,7 +862,7 @@ validate_path_for_deletion "$cache_dir"
 EOF
     [ "$status" -eq 1 ] || return 1
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -884,7 +884,7 @@ EOF
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" \
         lsof_trace="$lsof_trace" MOLE_TIMEOUT_MEDIUM_PROBE_SEC=2.5 \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -911,7 +911,7 @@ EOF
     printf 'second\n' > "$second/state.json"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" first="$first" second="$second" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -921,6 +921,8 @@ lsof() { printf 'call\n' >> "$lsof_trace"; return 130; }
 run_with_timeout() { shift; "$@"; }
 rm() { printf 'UNEXPECTED_REMOVE:%s\n' "$*"; return 99; }
 MOLE_CURRENT_COMMAND=clean
+# Test an eligible fixture family so the lsof cancellation boundary is exercised.
+_MOLE_LOCAL_CACHE_ROOT="$HOME"
 MOLE_CLEAN_CANCEL_STATUS=0
 first_rc=0
 safe_remove "$first" true 1 || first_rc=$?
@@ -945,7 +947,7 @@ EOF
     printf 'old\n' > "$cache_dir/state.json"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" \
-        /bin/bash --noprofile --norc <<'EOF'
+        /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -973,7 +975,7 @@ EOF
     mkdir -p "$cache_dir"
     printf 'idle\n' > "$cache_dir/state.json"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -991,7 +993,7 @@ EOF
     mkdir -p "$cache_dir"
     printf 'active\n' > "$cache_dir/events.jsonl"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -1024,7 +1026,7 @@ EOF
     mkdir -p "$cache_dir"
     printf 'idle\n' > "$cache_dir/state.json"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 MOLE_TEST_MODE=0
@@ -1065,7 +1067,7 @@ EOF
     local cache_root="$HOME/Library/Group Containers/TEAM.com.example.shared/Library/Caches"
     mkdir -p "$cache_root/First" "$cache_root/Second" "$cache_root/Third"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_root="$cache_root" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_root="$cache_root" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -1108,7 +1110,7 @@ EOF
     printf 'event\n' > "$live_file"
 
     exec 9> "$live_file"
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" cache_dir="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -1125,7 +1127,7 @@ EOF
     mkdir -p "$cache_dir/segments"
     printf 'event\n' > "$cache_dir/segments/events.jsonl"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$cache_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$cache_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_user_cache_owner_process_state() { return 1; }
@@ -1250,7 +1252,7 @@ EOF
     local orb_group_data="$HOME/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img.raw"
     local orb_state="$HOME/.orbstack/state.db"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" ORB_GROUP_DATA="$orb_group_data" ORB_STATE="$orb_state" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" ORB_GROUP_DATA="$orb_group_data" ORB_STATE="$orb_state" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 should_protect_data "dev.orbstack.OrbStack"
@@ -1324,25 +1326,27 @@ EOF
 }
 
 @test "safe_remove bounds a stalled external rm" {
+    # A one-second whole-SECONDS deadline can expire during validation under
+    # parallel load, before rm starts. Leave time to reach the recording stub.
     local target_file="$TEST_DIR/stalled-rm-file"
     local mock_bin="$TEST_DIR/stalled-rm-bin"
     local trace="$TEST_DIR/stalled-rm.trace"
     mkdir -p "$mock_bin"
     touch "$target_file"
 
-    cat > "$mock_bin/rm" <<'MOCK'
+    cat > "$mock_bin/rm" << 'MOCK'
 #!/bin/bash
 if [[ "$*" == *"$TARGET_FILE"* ]]; then
     printf 'rm %s\n' "$*" >> "$MOLE_RM_TRACE"
-    exec sleep 4
+    exec sleep 7
 fi
 exec /bin/rm "$@"
 MOCK
     chmod +x "$mock_bin/rm"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_FILE="$target_file" \
-        PATH="$mock_bin:$PATH" MOLE_RM_TRACE="$trace" MOLE_TIMEOUT_DISK_VERIFY_SEC=1 \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        PATH="$mock_bin:$PATH" MOLE_RM_TRACE="$trace" MOLE_TIMEOUT_DISK_VERIFY_SEC=3 \
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 get_path_size_kb() { echo 1; }
@@ -1361,7 +1365,7 @@ SCRIPT
     [[ "$(< "$trace")" == *"$target_file"* ]] || return 1
     local elapsed="${output##*ELAPSED=}"
     [[ "$elapsed" =~ ^[0-9]+$ ]] || return 1
-    [ "$elapsed" -lt 3 ]
+    [ "$elapsed" -lt 6 ]
     [ -e "$target_file" ]
 }
 
@@ -1370,7 +1374,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/data"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 oplog_enabled() { return 0; }
@@ -1393,7 +1397,7 @@ SCRIPT
     local target_dir="$TEST_DIR/compiled-model-dry-run"
     mkdir -p "$target_dir/com.apple.e5rt.e5bundlecache"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 MOLE_DRY_RUN=1
@@ -1411,7 +1415,7 @@ SCRIPT
     local target_dir="$TEST_DIR/cache-eligibility"
     mkdir -p "$target_dir"
 
-    run env PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/bin/clean.sh"
@@ -1432,7 +1436,7 @@ EOF
     local target_dir="$TEST_DIR/cache-live-after-size"
     mkdir -p "$target_dir"
 
-    run env PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc <<'EOF'
+    run env PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/bin/clean.sh"
@@ -1468,7 +1472,6 @@ EOF
     [ "$status" -eq 1 ]
 }
 
-
 @test "safe_find_delete validates base directory" {
     run /bin/bash -c "source '$PROJECT_ROOT/lib/core/common.sh'; safe_find_delete '/nonexistent' '*.tmp' 7 'f' 2>&1"
     [ "$status" -eq 1 ]
@@ -1495,7 +1498,7 @@ EOF
     mkdir -p "$target_dir"
     touch "$target_dir/file"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -1544,7 +1547,7 @@ SCRIPT
     mkdir -p "$target_dir" "$mock_bin"
     touch "$target_dir/data"
 
-    cat > "$mock_bin/sudo" <<'MOCK'
+    cat > "$mock_bin/sudo" << 'MOCK'
 #!/bin/bash
 set -u
 [[ "${1:-}" == "-n" ]] && shift
@@ -1563,7 +1566,7 @@ MOCK
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         PATH="$mock_bin:$PATH" MOLE_SUDO_RM_TRACE="$trace" \
         MOLE_TIMEOUT_DISK_VERIFY_SEC=2 MO_NO_OPLOG=1 \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -1592,7 +1595,7 @@ SCRIPT
     touch "$target_dir/data"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -1626,7 +1629,7 @@ SCRIPT
     mkdir -p "$target_dir/com.apple.e5rt.e5bundlecache"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
-        MOLE_TEST_MODE=1 MOLE_TEST_NO_AUTH=1 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=1 MOLE_TEST_NO_AUTH=1 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 MOLE_DRY_RUN=1
@@ -1645,7 +1648,7 @@ SCRIPT
     local target_dir="$TEST_DIR/sudo-expired"
     mkdir -p "$target_dir"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -1676,7 +1679,7 @@ SCRIPT
 @test "safe_sudo_remove returns protected-path code for safety skips" {
     local target_dir="/private/var/folders/9d/abc/C/com.crowdstrike.falcon.App/com.apple.metalfe"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -1694,7 +1697,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/old.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 TRACE="${TARGET_DIR}.sudo.trace"
@@ -1756,7 +1759,7 @@ SCRIPT
     local trace="$TEST_DIR/sudo-find-timeout.trace"
     mkdir -p "$target_dir" "$mock_bin"
 
-    cat > "$mock_bin/sudo" <<'MOCK'
+    cat > "$mock_bin/sudo" << 'MOCK'
 #!/bin/bash
 set -u
 [[ "${1:-}" == "-n" ]] && shift
@@ -1783,7 +1786,7 @@ MOCK
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         PATH="$mock_bin:$PATH" MOLE_SUDO_FIND_TRACE="$trace" \
         MOLE_TIMEOUT_DISK_VERIFY_SEC=1 MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 started=$(date +%s)
@@ -1819,7 +1822,7 @@ SCRIPT
     mkdir -p "$target_dir" "$mock_bin"
     touch "$target_dir/old.log"
 
-    cat > "$mock_bin/sudo" <<'MOCK'
+    cat > "$mock_bin/sudo" << 'MOCK'
 #!/bin/bash
 set -u
 printf '%s\n' "$*" >> "$MOLE_SUDO_FIND_TRACE"
@@ -1850,7 +1853,7 @@ MOCK
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         PATH="$mock_bin:$PATH" MOLE_SUDO_FIND_TRACE="$trace" \
         MOLE_TIMEOUT_DISK_VERIFY_SEC=1 MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 rc=0
@@ -1877,7 +1880,7 @@ SCRIPT
     mkdir -p "$target_dir" "$mock_bin"
     touch "$target_dir/old.log"
 
-    cat > "$mock_bin/sudo" <<'MOCK'
+    cat > "$mock_bin/sudo" << 'MOCK'
 #!/bin/bash
 set -u
 [[ "${1:-}" == "-n" ]] && shift
@@ -1908,7 +1911,7 @@ MOCK
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         PATH="$mock_bin:$PATH" MOLE_SUDO_BATCH_TRACE="$trace" MOLE_TIMEOUT_DISK_VERIFY_SEC=1 \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -1935,7 +1938,7 @@ SCRIPT
     mkdir -p "$target_dir"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -1969,7 +1972,7 @@ SCRIPT
 }
 
 @test "_mole_timeout_with_deadline clamps fractional timeouts to remaining whole seconds" {
-    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'SCRIPT'
+    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 # This case verifies the helper's clamp arithmetic, not command-substitution
@@ -2002,13 +2005,13 @@ SCRIPT
     local trace="$TEST_DIR/stalled-mdls.trace"
     mkdir -p "$app_dir" "$mock_bin"
 
-    cat > "$mock_bin/mdls" <<'MOCK'
+    cat > "$mock_bin/mdls" << 'MOCK'
 #!/bin/bash
 printf 'mdls %s\n' "$*" >> "$MOLE_MDLS_TRACE"
 exec sleep 4
 MOCK
     chmod +x "$mock_bin/mdls"
-    cat > "$mock_bin/du" <<'MOCK'
+    cat > "$mock_bin/du" << 'MOCK'
 #!/bin/bash
 printf 'UNEXPECTED_DU %s\n' "$*" >> "$MOLE_MDLS_TRACE"
 exec sleep 4
@@ -2017,7 +2020,7 @@ MOCK
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_DIR="$app_dir" \
         PATH="$mock_bin:$PATH" MOLE_MDLS_TRACE="$trace" \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 started=$(date +%s)
@@ -2049,7 +2052,7 @@ SCRIPT
     mkdir -p "$app_dir"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" APP_DIR="$app_dir" \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 run_with_timeout() {
@@ -2080,7 +2083,7 @@ SCRIPT
     mkdir -p "$target_dir"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -2140,7 +2143,7 @@ SCRIPT
     touch -t "$(date -v-8d '+%Y%m%d%H%M.%S')" "$target_file"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" TARGET_FILE="$target_file" \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -2185,7 +2188,7 @@ SCRIPT
     printf 'original\n' > "$target_file"
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" TARGET_FILE="$target_file" \
-        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -2236,7 +2239,7 @@ SCRIPT
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         FIRST_FILE="$first_file" SECOND_FILE="$second_file" MARKER="$marker" \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 MOLE_TEST_MODE=0
@@ -2286,7 +2289,7 @@ SCRIPT
     mkdir -p "$target_dir" "$mock_bin"
     touch "$target_dir/a.log" "$target_dir/b.log"
 
-    cat > "$mock_bin/sudo" <<'MOCK'
+    cat > "$mock_bin/sudo" << 'MOCK'
 #!/bin/bash
 set -u
 [[ "${1:-}" == "-n" ]] && shift
@@ -2318,7 +2321,7 @@ MOCK
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         PATH="$mock_bin:$PATH" MOLE_PARTIAL_ACK_TRACE="$trace" \
         MOLE_TIMEOUT_DISK_VERIFY_SEC=1 MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -2344,7 +2347,7 @@ SCRIPT
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         MO_NO_OPLOG=1 MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 \
-        /bin/bash --noprofile --norc <<'SCRIPT'
+        /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _mole_privileged_path_has_mutable_ancestor() { return 1; }
@@ -2384,7 +2387,7 @@ SCRIPT
 }
 
 @test "safe_sudo_find_delete never previews or removes active powerlog database aliases" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc <<'SCRIPT'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=0 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -2449,7 +2452,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/a.log" "$target_dir/b.log" "$target_dir/keep.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 TRACE="$TARGET_DIR/sudo.trace"
@@ -2526,7 +2529,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/a.log" "$target_dir/b.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 
@@ -2592,7 +2595,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/a.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 # Diagnostic breadcrumbs: this test fails only on some CI images, so record
 # which bash runs the script and every mock invocation on a side channel.
@@ -2666,7 +2669,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/stuck.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 TRACE="$TARGET_DIR/sudo.trace"
@@ -2733,7 +2736,7 @@ SCRIPT
     mkdir -p "$target_dir"
     touch "$target_dir/old.log"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 TRACE="$TARGET_DIR/sudo.trace"
@@ -2788,7 +2791,7 @@ SCRIPT
     touch "$target_dir/old.log"
     chmod 0555 "$target_dir"
 
-    cat > "$script" <<'SCRIPT'
+    cat > "$script" << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 TRACE="${TARGET_DIR}.sudo.trace"
@@ -2892,7 +2895,7 @@ SCRIPT
     touch "$old_file"
     touch "$new_file"
 
-    touch -t "$(date -v-8d '+%Y%m%d%H%M.%S' 2>/dev/null || date -d '8 days ago' '+%Y%m%d%H%M.%S')" "$old_file" 2>/dev/null || true
+    touch -t "$(date -v-8d '+%Y%m%d%H%M.%S' 2> /dev/null || date -d '8 days ago' '+%Y%m%d%H%M.%S')" "$old_file" 2> /dev/null || true
 
     run /bin/bash -c "source '$PROJECT_ROOT/lib/core/common.sh'; safe_find_delete '$TEST_DIR' '*.tmp' 7 'f'"
     [ "$status" -eq 0 ]
@@ -2908,7 +2911,7 @@ SCRIPT
     mkdir -p "$target_dir" "$mock_bin"
     touch "$target_file"
 
-    cat > "$mock_bin/find" <<'MOCK'
+    cat > "$mock_bin/find" << 'MOCK'
 #!/bin/bash
 printf 'find %s\n' "$*" >> "$MOLE_FIND_TRACE"
 printf '%s\0' "$TARGET_FILE"
@@ -2918,7 +2921,7 @@ MOCK
 
     run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_DIR="$target_dir" \
         TARGET_FILE="$target_file" MOLE_FIND_TRACE="$trace" PATH="$mock_bin:$PATH" \
-        MOLE_TIMEOUT_DISK_VERIFY_SEC=1 /bin/bash --noprofile --norc <<'SCRIPT'
+        MOLE_TIMEOUT_DISK_VERIFY_SEC=1 /bin/bash --noprofile --norc << 'SCRIPT'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 safe_remove() {
@@ -2940,9 +2943,9 @@ SCRIPT
 @test "safe_find_delete works when app protection is not loaded" {
     local old_file="$TEST_DIR/file-ops-only.tmp"
     touch "$old_file"
-    touch -t "$(date -v-8d '+%Y%m%d%H%M.%S' 2>/dev/null || date -d '8 days ago' '+%Y%m%d%H%M.%S')" "$old_file" 2>/dev/null || true
+    touch -t "$(date -v-8d '+%Y%m%d%H%M.%S' 2> /dev/null || date -d '8 days ago' '+%Y%m%d%H%M.%S')" "$old_file" 2> /dev/null || true
 
-    run /bin/bash --noprofile --norc <<EOF
+    run /bin/bash --noprofile --norc << EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 safe_find_delete "$TEST_DIR" "*.tmp" 7 "f"
@@ -2972,7 +2975,7 @@ EOF
 # real process table, leaf-only matching called 34 of 59 idle caches busy.
 # Parity with the Mac app's ProcessGuard.processListMentionsCacheOwner.
 @test "cache owner probe requires corroboration for a shared leaf name (#1390)" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 # Squirrel passes the owning bundle id as argv[1], which is the real reason
@@ -3010,7 +3013,7 @@ EOF
 # and its cache dir is com.autodesk.AcCoreConsole, so the leaf plus the vendor
 # on the same argv line is the only available evidence.
 @test "cache owner probe still catches a corroborated helper (#1390)" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 ps() {
@@ -3028,11 +3031,11 @@ EOF
         echo "$output"
         return 1
     }
-	[[ "$output" == *"HELPER=0"* ]]
+    [[ "$output" == *"HELPER=0"* ]]
 }
 
 @test "cache owner probes reuse one process table snapshot" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 ps_calls=$(mktemp)
@@ -3053,17 +3056,17 @@ printf 'FIRST=%s SECOND=%s CALLS=%s STATE=%s\n' \
 	"$first_state" "$second_state" "$call_count" "$_MOLE_PROCESS_TABLE_STATE"
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == "FIRST=0 SECOND=1 CALLS=1 STATE=ok" ]] || return 1
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == "FIRST=0 SECOND=1 CALLS=1 STATE=ok" ]] || return 1
 }
 
 @test "safe_remove refreshes process evidence at the final deletion boundary" {
-	local cache_dir="$HOME/Library/Caches/com.example.LateHelper"
-	local target_file="$cache_dir/Cache.db"
-	mkdir -p "$cache_dir"
-	touch "$target_file"
+    local cache_dir="$HOME/Library/Caches/com.example.LateHelper"
+    local target_file="$cache_dir/Cache.db"
+    mkdir -p "$cache_dir"
+    touch "$target_file"
 
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_FILE="$target_file" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" TARGET_FILE="$target_file" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
@@ -3092,18 +3095,18 @@ printf 'RC=%s CALLS=%s EXISTS=%s RM_CALLS=%s\n' \
 	"$rm_call_count"
 EOF
 
-	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"RC=1 CALLS=2 EXISTS=yes RM_CALLS=0"* ]] || {
-		echo "$output"
-		return 1
-	}
+    [ "$status" -eq 0 ] || return 1
+    [[ "$output" == *"RC=1 CALLS=2 EXISTS=yes RM_CALLS=0"* ]] || {
+        echo "$output"
+        return 1
+    }
 }
 
 # Mole's own size probe runs `du` over the very directory it is judging, so the
 # cache id appears in the table because Mole is looking at it. Counting that as
 # ownership would hide every cache that takes long enough to measure.
 @test "cache owner probe ignores Mole's own measurement processes" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 ps() {
@@ -3127,7 +3130,7 @@ EOF
 
 # An unreadable process table is not proof the owner is idle.
 @test "cache owner probe fails closed when the process table is unreadable" {
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/file_ops.sh"
 ps() { return 1; }

@@ -26,7 +26,8 @@ import (
 // stale on-disk cache entries are rejected instead of silently reused.
 // v2: analyze deduplicates hardlinked files to match `du`.
 // v3: ordinary Parallels VM storage is included instead of skipped by name.
-const cacheSchemaVersion = 3
+// v4: cloud-managed and nonlocal trees are excluded; estimates are not deletion evidence.
+const cacheSchemaVersion = 4
 
 type overviewSizeSnapshot struct {
 	Size          int64     `json:"size"`

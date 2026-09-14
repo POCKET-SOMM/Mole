@@ -1,0 +1,22 @@
+(version 1)
+(allow default)
+
+; Host apps, profiles and settings stay read-only even if a test mock fails.
+(deny file-write*)
+(allow file-write*
+    (subpath (param "PROJECT"))
+    (subpath "/private/tmp")
+    (subpath (param "TEMPROOT"))
+    (literal "/dev/null")
+    (literal "/dev/ptmx")
+    (literal "/dev/tty")
+    (regex #"^/dev/(ttys|pty)[a-zA-Z0-9]+$"))
+(deny signal)
+(allow signal (target self) (target same-sandbox))
+
+; Use mocks for app control; don't delegate writes to unsandboxed services.
+(deny process-exec
+    (literal "/usr/bin/osascript")
+    (literal "/usr/bin/sudo")
+    (literal "/bin/launchctl")
+    (literal "/usr/bin/open"))

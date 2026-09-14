@@ -88,8 +88,8 @@ func TestGetDirectorySizeFromDuWithIgnoresSkipsCloudPlaceholderTree(t *testing.T
 	if err != nil {
 		t.Fatalf("getDirectorySizeFromDuWithExcludeAndIgnores with ignore: %v", err)
 	}
-	if withIgnore >= withoutIgnore {
-		t.Fatalf("expected ignored Mobile Documents to reduce size, got ignored=%d without=%d", withIgnore, withoutIgnore)
+	if withIgnore != withoutIgnore {
+		t.Fatalf("cloud trees must be excluded even without caller hints, got ignored=%d without=%d", withIgnore, withoutIgnore)
 	}
 	if withIgnore <= 0 {
 		t.Fatalf("expected non-zero size for included files, got %d", withIgnore)

@@ -46,30 +46,30 @@ setup() {
     [ -x "$PROJECT_ROOT/scripts/check.sh" ]
 
     run /bin/bash -c "grep -q 'Mole Check' '$PROJECT_ROOT/scripts/check.sh'"
-	[ "$status" -eq 0 ]
+    [ "$status" -eq 0 ]
 }
 
 @test "check workflow pins the shfmt version" {
-	local workflow="$PROJECT_ROOT/.github/workflows/check.yml"
+    local workflow="$PROJECT_ROOT/.github/workflows/check.yml"
 
-	run grep -F "go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1" "$workflow"
-	[ "$status" -eq 0 ] || return 1
+    run grep -F "go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1" "$workflow"
+    [ "$status" -eq 0 ] || return 1
 
-	run grep -E "brew install .*shfmt" "$workflow"
-	[ "$status" -ne 0 ] || return 1
+    run grep -E "brew install .*shfmt" "$workflow"
+    [ "$status" -ne 0 ] || return 1
 }
 
 @test "check workflow pins goimports to the project Go toolchain" {
-	run grep -F 'golang.org/x/tools/cmd/goimports@v0.49.0' \
-		"$PROJECT_ROOT/.github/workflows/check.yml"
-	[ "$status" -eq 0 ]
-	run grep -F 'golang.org/x/tools/cmd/goimports@latest' \
-		"$PROJECT_ROOT/.github/workflows/check.yml"
-	[ "$status" -ne 0 ]
+    run grep -F 'golang.org/x/tools/cmd/goimports@v0.49.0' \
+        "$PROJECT_ROOT/.github/workflows/check.yml"
+    [ "$status" -eq 0 ]
+    run grep -F 'golang.org/x/tools/cmd/goimports@latest' \
+        "$PROJECT_ROOT/.github/workflows/check.yml"
+    [ "$status" -ne 0 ]
 }
 
 @test "diagnostic guidance check rejects equivalent pipe-to-shell spellings across lines" {
-	run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 eval "$(sed -n '/^check_diagnostic_guidance()/,/^}/p' "$PROJECT_ROOT/scripts/check.sh")"
 
@@ -101,8 +101,11 @@ assert_unsafe ksh '`curl https://example.test/Mole-Diagnose.command | ksh`'
 assert_unsafe escaped '`curl https://example.test/Mole-Diagnose.command | ba\sh`'
 EOF
 
-	[ "$status" -eq 0 ] || { echo "$output"; return 1; }
-	[[ "$output" != *"UNEXPECTED_UNSAFE_PASS:"* ]]
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
+    [[ "$output" != *"UNEXPECTED_UNSAFE_PASS:"* ]]
 }
 
 @test "test.sh script exists and is valid" {
@@ -124,14 +127,14 @@ EOF
 
     local safe_fixture="$HOME/destructive-safe.sh"
     local unsafe_fixture="$HOME/destructive-unsafe.sh"
-    cat > "$safe_fixture" <<'EOF'
+    cat > "$safe_fixture" << 'EOF'
 rm -rf "$scratch" # SAFE: exact test scratch directory
 /bin/rm -r -f "$scratch" # SAFE: exact test scratch directory
 find "$scratch" -delete # SAFE: exact test scratch directory
 echo "rm -rf appears only in guidance"
 printf '%s\n' 'find example -delete'
 EOF
-    cat > "$unsafe_fixture" <<'EOF'
+    cat > "$unsafe_fixture" << 'EOF'
 command rm -fr "$target"
 sudo -n /bin/rm -r -f "$target"
 find "$target" -depth -delete
@@ -148,11 +151,17 @@ rm -rf "$target"
 EOF
 
     run python3 "$audit" "$safe_fixture"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"destructive-sink-audit-ok"* ]] || return 1
 
     run python3 "$audit" "$unsafe_fixture"
-    [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 1 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"$unsafe_fixture:1:"* ]] || return 1
     [[ "$output" == *"$unsafe_fixture:2:"* ]] || return 1
     [[ "$output" == *"$unsafe_fixture:3:"* ]] || return 1
@@ -180,10 +189,8 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "release builds disable cgo and check minimum macOS version" {
+@test "manual cross-builds retain cgo and minimum macOS safeguards" {
     run /bin/bash -c "grep -q '^RELEASE_GO_ENV := CGO_ENABLED=0$' '$PROJECT_ROOT/Makefile'"
-    [ "$status" -eq 0 ]
-    run /bin/bash -c "grep -q 'scripts/check_release_minos.sh' '$PROJECT_ROOT/.github/workflows/release.yml'"
     [ "$status" -eq 0 ]
     [ -x "$PROJECT_ROOT/scripts/check_release_minos.sh" ]
     run grep -F 'MAX_RELEASE_MINOS:-12.0' "$PROJECT_ROOT/scripts/check_release_minos.sh"
@@ -214,7 +221,7 @@ EOF
     local fake_binary="$HOME/analyze-darwin-arm64"
     mkdir -p "$fake_bin"
     touch "$fake_binary"
-    cat > "$fake_bin/otool" <<'EOF'
+    cat > "$fake_bin/otool" << 'EOF'
 #!/bin/bash
 printf '      cmd LC_BUILD_VERSION\n'
 printf '    minos %s\n' "$FAKE_MINOS"
@@ -223,55 +230,27 @@ EOF
 
     run env PATH="$fake_bin:$PATH" FAKE_MINOS=12.0 \
         "$PROJECT_ROOT/scripts/check_release_minos.sh" "$fake_binary"
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"minos 12.0 <= 12.0"* ]] || return 1
 
     run env PATH="$fake_bin:$PATH" FAKE_MINOS=12.1 \
         "$PROJECT_ROOT/scripts/check_release_minos.sh" "$fake_binary"
-    [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 1 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"minos 12.1 exceeds allowed 12.0"* ]] || return 1
 }
 
-@test "release workflow rejects a tag that differs from the source version" {
-    local workflow="$PROJECT_ROOT/.github/workflows/release.yml"
-
-    run grep -F 'name: Verify release tag matches source version' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F "SOURCE_VERSION=\$(sed -n" "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F "EXPECTED_TAG=\"V\${SOURCE_VERSION}\"" "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F "\"\$RELEASE_TAG\" != \"\$EXPECTED_TAG\"" "$workflow"
-    [ "$status" -eq 0 ]
-}
-
-@test "release workflow keeps the Homebrew Core PR open (#1209)" {
-    local workflow="$PROJECT_ROOT/.github/workflows/release.yml"
-
-    run grep -F "Have you followed the [guidelines for contributing]" "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F "pulls?state=all&head=tw93:" "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F 'PR_STATE" != "open"' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F 'core_status=published' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F 'core_status=pr-open' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F 'url_matches != 1 || sha_matches != 1' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F 'already exists; refusing to overwrite it.' "$workflow"
-    [ "$status" -eq 0 ]
-    run grep -F "git push \"--force-with-lease=refs/heads/\${BRANCH}:\" origin \"\$BRANCH\"" "$workflow"
-    [ "$status" -eq 0 ]
-
-    run awk '
-        /name: Update Homebrew formula \(Official Core\)/ { in_step = 1 }
-        in_step && /continue-on-error:/ { found = 1 }
-        in_step && /name: Verify formula updates/ { exit found ? 1 : 0 }
-        END { if (!in_step) exit 1 }
-    ' "$workflow"
-    [ "$status" -eq 0 ]
+@test "fork workflows enforce read-only CI without publishing" {
+    run ruby "$PROJECT_ROOT/tests/helpers/ci_policy.rb" "$PROJECT_ROOT/.github/workflows"
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
 }
 
 @test "setup-quick-launchers.sh has detect_mo function" {
@@ -289,7 +268,7 @@ EOF
 @test "setup-quick-launchers.sh generates Raycast scripts with discoverable metadata" {
     local fake_bin="$HOME/fake-bin"
     mkdir -p "$fake_bin"
-    cat > "$fake_bin/mo" <<'EOF'
+    cat > "$fake_bin/mo" << 'EOF'
 #!/bin/bash
 exit 0
 EOF
@@ -340,28 +319,28 @@ EOF
 }
 
 @test "install.sh supports dev branch installs" {
-    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
+    run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 eval "$(sed -n '/^source_archive_url()/,/^}/p' "$PROJECT_ROOT/install.sh")"
 [[ "$(source_archive_url dev "")" == "https://github.com/tw93/mole/archive/refs/heads/dev.tar.gz" ]]
 EOF
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     run /bin/bash -c "grep -q 'MOLE_VERSION=\"dev\"' '$PROJECT_ROOT/install.sh'"
     [ "$status" -eq 0 ]
 }
 
-@test "release workflow keeps Homebrew distribution on official core only" {
-    run grep -q 'update-homebrew-core:' "$PROJECT_ROOT/.github/workflows/release.yml"
-    [ "$status" -eq 0 ]
-
-    run grep -Eq 'update-personal-tap:|tw93/homebrew-tap|PAT_TOKEN' "$PROJECT_ROOT/.github/workflows/release.yml"
-    [ "$status" -ne 0 ]
-
-    [ ! -e "$PROJECT_ROOT/scripts/update_homebrew_tap_formula.sh" ]
-
-    run grep -Eq 'Homebrew tap|personal tap' "$PROJECT_ROOT/.claude/skills/release-notes/SKILL.md"
-    [ "$status" -ne 0 ]
-    run grep -q 'Homebrew Core PR is workflow-driven' "$PROJECT_ROOT/.claude/skills/release-notes/SKILL.md"
+@test "fork removes inherited publishing and account automation" {
+    local relative
+    for relative in .github/workflows/release.yml .github/workflows/update-contributors.yml \
+        .github/workflows/bundle_audit.yml .github/workflows/codeql.yml \
+        .github/dependabot.yml .github/CODEOWNERS .github/FUNDING.yml \
+        .claude/skills/release-notes/scripts/post-reactions.sh; do
+        [ ! -e "$PROJECT_ROOT/$relative" ] || return 1
+    done
+    run grep -F 'No distribution channel is configured' "$PROJECT_ROOT/.claude/skills/release-flow/SKILL.md"
     [ "$status" -eq 0 ]
 }
 

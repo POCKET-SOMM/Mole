@@ -63,6 +63,7 @@ journal/
 .cursorrules
 
 # Go build artifacts (development)
+/dist/
 cmd/analyze/analyze
 cmd/status/status
 /status

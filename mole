@@ -61,8 +61,8 @@ source "$SCRIPT_DIR/lib/core/commands.sh"
 trap cleanup_temp_files EXIT INT TERM
 
 # Version and update helpers
-VERSION="1.54.0"
-MOLE_TAGLINE="Deep clean and optimize your Mac."
+VERSION="1.54.0-team.1-rc.1"
+MOLE_TAGLINE="Local, reviewable Mac maintenance."
 
 is_touchid_configured() {
     grep -q "pam_tid.so" /etc/pam.d/sudo /etc/pam.d/sudo_local 2> /dev/null
@@ -148,7 +148,8 @@ interactive_main_menu() {
     brand_banner="$(show_brand_banner)"
     MAIN_MENU_BANNER="$brand_banner"
 
-    update_message="$(read_update_message_cache "$msg_cache")"
+    # Upstream notices must not offer an update that replaces this fork.
+    update_message=""
     MAIN_MENU_UPDATE_MESSAGE="$update_message"
     MAIN_MENU_SHOW_UPDATE="$([[ -n "$update_message" ]] && echo true || echo false)"
 
@@ -224,7 +225,7 @@ interactive_main_menu() {
                 [[ "${MAIN_MENU_SHOW_UPDATE:-false}" == "true" ]] || continue
                 show_cursor
                 clear
-                update_mole
+                mole_local_update_notice
                 exit 0
                 ;;
             "QUIT") cleanup_and_exit ;;
@@ -285,7 +286,7 @@ main() {
                         ;;
                 esac
             done
-            update_mole "$force_update" "$nightly_update"
+            mole_local_update_notice
             exit 0
             ;;
         "remove")
@@ -311,7 +312,6 @@ main() {
             exit 0
             ;;
         "")
-            check_for_updates
             interactive_main_menu
             ;;
         *)

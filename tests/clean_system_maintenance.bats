@@ -64,7 +64,7 @@ source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/system.sh"
 scan_file=$(create_temp_file)
 rc=0
-materialize_completed_system_scan "$scan_file" 1 "$SLOW_SCAN" || rc=$?
+materialize_completed_system_scan "$scan_file" 1 /bin/bash "$SLOW_SCAN" || rc=$?
 printf 'RC=%s\n' "$rc"
 printf 'BYTES=%s\n' "$(wc -c < "$scan_file" | tr -d ' ')"
 rm -f -- "$scan_file"
@@ -90,7 +90,7 @@ set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/system.sh"
 scan_file=$(create_temp_file)
-materialize_completed_system_scan "$scan_file" 1 "$PRODUCER"
+materialize_completed_system_scan "$scan_file" 1 /bin/bash "$PRODUCER"
 record=""
 IFS= read -r -d '' record < "$scan_file" || true
 [[ "$record" == $'/Volumes/Backup/line\nbreak.inProgress' ]] || exit 1
@@ -2014,6 +2014,8 @@ date() {
 }
 export -f date
 
+run_with_timeout() { shift; "$@"; }
+is_ac_power() { return 0; }
 execute_optimization spotlight_index_optimize
 EOF
 

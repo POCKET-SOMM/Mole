@@ -54,27 +54,27 @@ set -euo pipefail
 source "$PROJECT_ROOT/lib/optimize/catalog.sh"
 
 expected=$(cat <<'CONTRACT'
-system_maintenance|opt_system_maintenance|DNS & Spotlight Check|DNS & Spotlight Check|Refresh DNS cache & verify Spotlight status|true
-cache_refresh|opt_cache_refresh|Finder Cache Refresh|Finder Cache Refresh|Refresh QuickLook thumbnails & icon services cache|true
-saved_state_cleanup|opt_saved_state_cleanup|App State Cleanup|App State Cleanup|Remove old saved application states (30+ days)|true
-fix_broken_configs|opt_fix_broken_configs|Broken Config Repair|Broken Config Repair|Fix corrupted preferences files|true
-network_optimization|opt_network_optimization|Network Cache Refresh|Network Cache Refresh|Optimize DNS cache & restart mDNSResponder|true
-sqlite_vacuum|opt_sqlite_vacuum|Database Optimization|Database Optimization|Compress SQLite databases for Mail, Safari & Messages (skips if apps are running)|true
-launch_services_rebuild|opt_launch_services_rebuild|LaunchServices Repair|LaunchServices Repair|Repair "Open with" menu & file associations|true
-prevent_network_dsstore|opt_prevent_network_dsstore|Prevent Finder .DS_Store|Prevent Finder .DS_Store|Set a persistent Finder preference to stop writing .DS_Store on SMB/AFP/NFS and USB volumes|true
-legacy_overrides_audit|opt_legacy_overrides_audit|Legacy Overrides|Legacy Overrides|Remove hidden App Nap and disk-image verification overrides left by old tweak tools|true
-network_stack_optimize|opt_network_stack_optimize|Network Stack Refresh|Network Stack Refresh|Flush routing table and ARP cache to resolve network issues|true
-disk_permissions_repair|opt_disk_permissions_repair|Permission Repair|Permission Repair|Fix user directory permission issues|true
-spotlight_index_optimize|opt_spotlight_index_optimize|Spotlight Optimization|Spotlight Optimization|Rebuild index if search is slow (smart detection)|true
-spotlight_orphan_rules_cleanup|opt_prune_spotlight_orphan_rules|Spotlight Orphan Rules|Spotlight Orphan Rules|Remove Spotlight search-rule entries for apps that are no longer installed|true
-periodic_maintenance|opt_periodic_maintenance|Periodic Maintenance|Periodic Maintenance|Run macOS daily/weekly/monthly maintenance scripts if stale|true
-shared_file_list_repair|opt_shared_file_list_repair|Shared File Lists|Shared File Lists|Repair corrupted Finder favorites and recent documents|true
-disk_verify|opt_disk_verify|Disk Health|Disk Health|Verify filesystem integrity|true
-login_items_audit|opt_login_items_audit|Login Items|Login Items Audit|Audit login items for broken entries|true
-quarantine_cleanup|opt_quarantine_cleanup|Quarantine Database Cleanup|Quarantine Database Cleanup|Clear Gatekeeper download tracking history|true
-launch_agents_cleanup|opt_launch_agents_cleanup|Launch Agents Cleanup|Launch Agents Cleanup|Remove broken LaunchAgents whose binaries no longer exist|true
-notification_cleanup|opt_notification_cleanup|Notifications|Notifications|Clean old delivered notifications to reduce database bloat|true
-coreduet_cleanup|opt_coreduet_cleanup|Usage Data|Usage Data|Clean old usage tracking data|true
+system_maintenance|opt_system_maintenance|DNS & Spotlight Check|DNS & Spotlight Check|Refresh DNS cache & verify Spotlight status|false
+cache_refresh|opt_cache_refresh|Finder Cache Refresh|Finder Cache Refresh|Refresh QuickLook thumbnails & icon services cache|false
+saved_state_cleanup|opt_saved_state_cleanup|App State Cleanup|App State Cleanup|Remove old saved application states (30+ days)|false
+fix_broken_configs|opt_fix_broken_configs|Broken Config Repair|Broken Config Repair|Fix corrupted preferences files|false
+network_optimization|opt_network_optimization|Network Cache Refresh|Network Cache Refresh|Optimize DNS cache & restart mDNSResponder|false
+sqlite_vacuum|opt_sqlite_vacuum|Database Optimization|Database Optimization|Compress SQLite databases for Mail, Safari & Messages (skips if apps are running)|false
+launch_services_rebuild|opt_launch_services_rebuild|LaunchServices Repair|LaunchServices Repair|Repair "Open with" menu & file associations|false
+prevent_network_dsstore|opt_prevent_network_dsstore|Prevent Finder .DS_Store|Prevent Finder .DS_Store|Set a persistent Finder preference to stop writing .DS_Store on SMB/AFP/NFS and USB volumes|false
+legacy_overrides_audit|opt_legacy_overrides_audit|Legacy Overrides|Legacy Overrides|Remove hidden App Nap and disk-image verification overrides left by old tweak tools|false
+network_stack_optimize|opt_network_stack_optimize|Network Stack Refresh|Network Stack Refresh|Flush routing table and ARP cache to resolve network issues|false
+disk_permissions_repair|opt_disk_permissions_repair|Permission Repair|Permission Repair|Fix user directory permission issues|false
+spotlight_index_optimize|opt_spotlight_index_optimize|Spotlight Optimization|Spotlight Optimization|Rebuild index if search is slow (smart detection)|false
+spotlight_orphan_rules_cleanup|opt_prune_spotlight_orphan_rules|Spotlight Orphan Rules|Spotlight Orphan Rules|Remove Spotlight search-rule entries for apps that are no longer installed|false
+periodic_maintenance|opt_periodic_maintenance|Periodic Maintenance|Periodic Maintenance|Run macOS daily/weekly/monthly maintenance scripts if stale|false
+shared_file_list_repair|opt_shared_file_list_repair|Shared File Lists|Shared File Lists|Repair corrupted Finder favorites and recent documents|false
+disk_verify|opt_disk_verify|Disk Health|Disk Health|Verify filesystem integrity|false
+login_items_audit|opt_login_items_audit|Login Items|Login Items Audit|Audit login items for broken entries|false
+quarantine_cleanup|opt_quarantine_cleanup|Quarantine Database Cleanup|Quarantine Database Cleanup|Clear Gatekeeper download tracking history|false
+launch_agents_cleanup|opt_launch_agents_cleanup|Launch Agents Cleanup|Launch Agents Cleanup|Remove broken LaunchAgents whose binaries no longer exist|false
+notification_cleanup|opt_notification_cleanup|Notifications|Notifications|Clean old delivered notifications to reduce database bloat|false
+coreduet_cleanup|opt_coreduet_cleanup|Usage Data|Usage Data|Clean old usage tracking data|false
 CONTRACT
 )
 
@@ -123,7 +123,7 @@ contract_hash=$(
         shasum -a 256 |
         awk '{print $1}'
 )
-expected_hash="8896e6dedcab9ab76accb1ea7502c59b711da912473923b089451222ddc61c2c"
+expected_hash="e14af85fd6727b8c11aa2818cd10ac53deabc0d6dee3489602c1ca17bd873c58"
 if [[ "$contract_hash" != "$expected_hash" ]]; then
     echo "health optimization contract hash: expected $expected_hash, got $contract_hash"
     exit 1
@@ -149,7 +149,7 @@ EOF
     [[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
 }
 
-@test "optimize catalog rejects duplicate identities and unsafe tasks" {
+@test "optimize catalog rejects duplicate identities and automatic approvals" {
     run env PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 
@@ -162,17 +162,17 @@ if /bin/bash --noprofile --norc < <(
 fi
 
 if /bin/bash --noprofile --norc < <(
-    awk '!changed && / true$/ {sub(/ true$/, " false"); changed=1} {print}' \
+    awk '!changed && / false$/ {sub(/ false$/, " true"); changed=1} {print}' \
         "$PROJECT_ROOT/lib/optimize/catalog.sh"
 ); then
-    echo "unsafe task passed validation"
+    echo "automatic approval passed validation"
     exit 1
 fi
 EOF
 
     [[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
     [[ "$output" == *"Duplicate optimize task handler: opt_system_maintenance"* ]] || return 1
-    [[ "$output" == *"Optimize task is not safe for automatic execution: system_maintenance"* ]] || return 1
+    [[ "$output" == *"Optimize task cannot be approved automatically: system_maintenance"* ]] || return 1
 }
 
 @test "optimize catalog resolves handlers by exact action id" {

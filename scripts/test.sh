@@ -8,7 +8,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Install the OS boundary before sourcing code, sweeping files or running tests.
+# The private argument prevents recursion; it is not a user-facing opt-out.
+if [[ "${1:-}" != "--inside-test-sandbox" ]]; then
+    exec /bin/bash "$SCRIPT_DIR/test_sandbox.sh" /bin/bash "$0" --inside-test-sandbox "$@"
+fi
+shift
+
 cd "$PROJECT_ROOT"
+
+# Preserve the prepared module store, then give runner-level code a disposable
+# HOME too. Individual Bats files may create narrower homes below this boundary.
+if command -v go > /dev/null 2>&1; then
+    GOMODCACHE="${GOMODCACHE:-$(GOTOOLCHAIN=local go env GOMODCACHE)}"
+    export GOMODCACHE
+fi
+TEST_RUN_HOME="$(mktemp -d "${TMPDIR:-/tmp}/mole-test-home.XXXXXX")"
+export HOME="$TEST_RUN_HOME"
 
 # Sweep orphaned per-test HOME dirs left behind by killed bats runs.
 # Normal teardown removes them; this only catches the ones that escaped.
@@ -20,6 +36,8 @@ fi
 
 # Never allow the scripted test run to trigger real sudo or Touch ID prompts.
 export MOLE_TEST_NO_AUTH=1
+export MOLE_SKIP_FINDER_TESTS=1
+export BATS_TEST_TIMEOUT=120
 
 # Tests assert deterministic ANSI escape output. The suite runs without a
 # terminal, so lib/core/base.sh would otherwise drop color; the MOLE_TEST_NO_AUTH
@@ -32,6 +50,7 @@ TEST_SYSTEM_STUB_DIR="$(mktemp -d "${TMPDIR:-/tmp}/mole-test-stubs.XXXXXX")"
 TEST_GO_HELPER_DIR=""
 # shellcheck disable=SC2329  # Invoked by trap.
 cleanup_test_stubs() {
+    rm -rf "$TEST_RUN_HOME"        # SAFE: exact mktemp-created runner HOME
     rm -rf "$TEST_SYSTEM_STUB_DIR" # SAFE: exact mktemp-created test stub directory
     if [[ -n "$TEST_GO_HELPER_DIR" ]]; then
         rm -rf "$TEST_GO_HELPER_DIR" # SAFE: exact mktemp-created Go helper directory
@@ -111,7 +130,7 @@ report_unit_result() {
         printf "${GREEN}${ICON_SUCCESS} Unit tests passed${NC}\n"
     else
         printf "${RED}${ICON_ERROR} Unit tests failed${NC}\n"
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
 }
 
@@ -159,7 +178,7 @@ if command -v shellcheck > /dev/null 2>&1; then
             printf "${GREEN}${ICON_SUCCESS} Test script lint passed${NC}\n"
         else
             printf "${RED}${ICON_ERROR} Test script lint failed${NC}\n"
-            ((FAILED++))
+            FAILED=$((FAILED + 1))
         fi
     else
         printf "${YELLOW}${ICON_WARNING} No test scripts found, skipping${NC}\n"
@@ -349,7 +368,7 @@ if command -v go > /dev/null 2>&1; then
         printf "${GREEN}${ICON_SUCCESS} Go tests passed${NC}\n"
     else
         printf "${RED}${ICON_ERROR} Go tests failed${NC}\n"
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
 else
     printf "${YELLOW}${ICON_WARNING} Go not installed, skipping Go tests${NC}\n"
@@ -361,7 +380,7 @@ if bash -c 'source lib/core/common.sh && echo "OK"' > /dev/null 2>&1; then
     printf "${GREEN}${ICON_SUCCESS} Module loading passed${NC}\n"
 else
     printf "${RED}${ICON_ERROR} Module loading failed${NC}\n"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 fi
 echo ""
 
@@ -371,19 +390,21 @@ if bash -n mole && bash -n bin/clean.sh && bash -n bin/optimize.sh; then
     printf "${GREEN}${ICON_SUCCESS} Integration tests passed${NC}\n"
 else
     printf "${RED}${ICON_ERROR} Integration tests failed${NC}\n"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 fi
 echo ""
 
 echo "6. Testing installation..."
 # Installation script is macOS-specific; skip this test on non-macOS platforms
-if [[ "$(uname -s)" != "Darwin" ]]; then
+if ! /bin/ps -p "$$" -o lstart= > /dev/null 2>&1; then
+    printf "${YELLOW}${ICON_WARNING} Installation integration skipped: sandbox denies native process-start inspection${NC}\n"
+elif [[ "$(uname -s)" != "Darwin" ]]; then
     printf "${YELLOW}${ICON_WARNING} Installation test skipped (non-macOS)${NC}\n"
 else
     # Skip if Homebrew mole is installed (install.sh will refuse to overwrite)
     install_test_home=""
     install_test_prefix=""
-    if command -v brew > /dev/null 2>&1 && brew list mole &> /dev/null; then
+    if [[ -d /opt/homebrew/Cellar/mole || -d /usr/local/Cellar/mole ]]; then
         printf "${GREEN}${ICON_SUCCESS} Installation test skipped, Homebrew${NC}\n"
     else
         install_test_home="$(mktemp -d "$PROJECT_ROOT/tests/tmp-install-home.XXXXXX" 2> /dev/null || true)"
@@ -408,11 +429,11 @@ else
             printf "${GREEN}${ICON_SUCCESS} Installation test passed${NC}\n"
         else
             printf "${RED}${ICON_ERROR} Installation test failed${NC}\n"
-            ((FAILED++))
+            FAILED=$((FAILED + 1))
         fi
     else
         printf "${RED}${ICON_ERROR} Installation test failed${NC}\n"
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
     if [[ -n "$install_test_prefix" ]]; then
         MO_NO_OPLOG=1 safe_remove "$install_test_prefix" true || true

@@ -1325,10 +1325,17 @@ JSON
 
     run_editor_extension_cleanup
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     local hits
     hits=$(printf '%s\n' "$output" | grep -c "CLEAN:$ext_root/pub.ext-1.0.0" || true)
-    [ "$hits" -eq 1 ] || { echo "expected 1 offer, got $hits"; echo "$output"; return 1; }
+    [ "$hits" -eq 1 ] || {
+        echo "expected 1 offer, got $hits"
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"Obsolete VS Code extension"* ]] || [[ "$output" == *"CLEAN:"* ]]
 }
 
@@ -1347,7 +1354,10 @@ JSON
 
     run_editor_extension_cleanup
 
-    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+    [ "$status" -eq 0 ] || {
+        echo "$output"
+        return 1
+    }
     [[ "$output" == *"CLEAN:$ext_root/pub.obsolete-0.9.0"* ]] || return 1
     [[ "$output" != *"CLEAN:$ext_root/pub.private-1.0.0"* ]] || return 1
 }
@@ -1575,7 +1585,7 @@ EOF
     mkdir -p "$isolated_home/Library/Developer/Xcode/DerivedData/App-abc"
 
     run env HOME="$isolated_home" PROJECT_ROOT="$PROJECT_ROOT" \
-        MOLE_CURRENT_COMMAND=clean /bin/bash --noprofile --norc << 'EOF'
+        _MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean /bin/bash --noprofile --norc << 'EOF'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/app_caches.sh"
@@ -1702,6 +1712,7 @@ set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 _MOLE_COMPLETE_LSOF_MODE=direct
 pgrep() { return 1; }
+ps() { printf "  PID PPID COMM ARGS\n"; }
 lsof() { return 1; }
 oplog_enabled() { return 1; }
 log_operation() { :; }
@@ -2075,7 +2086,7 @@ INNER
     make_fusion_version_dir "$old" "2.0.100"
     ln -s "$current/Autodesk Fusion.app" "$prod/Autodesk Fusion.app"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc <<'INNER'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/app_caches.sh"
@@ -2116,7 +2127,7 @@ INNER
     make_fusion_version_dir "$old" "2.0.100"
     ln -s "$current/Autodesk Fusion.app" "$prod/Autodesk Fusion.app"
 
-    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" MOLE_CURRENT_COMMAND=clean /bin/bash --noprofile --norc << 'INNER'
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" _MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean /bin/bash --noprofile --norc << 'INNER'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/app_caches.sh"
@@ -2365,6 +2376,7 @@ INNER
 }
 
 @test "Finder alias resolver passes the alias path as inert argv" {
+    [[ -x /usr/bin/osascript ]] || skip "sandbox denies native osascript execution"
     local prod="$HOME/Library/Application Support/Autodesk/webdeploy/production"
     rm -rf "$HOME/Library/Application Support/Autodesk"
     local current="$prod/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

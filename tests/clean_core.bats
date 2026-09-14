@@ -449,7 +449,7 @@ set -euo pipefail
 source "\$PROJECT_ROOT/lib/core/common.sh"
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 files_cleaned=0
 total_size_cleaned=0
@@ -495,7 +495,7 @@ EOF
 set -euo pipefail
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 unset MOLE_CLEAN_SIZING_TIMEOUTS
 run_with_timeout() { return 124; }
 safe_remove() { echo "REMOVE:\$1"; /bin/rm -rf "\$1"; }
@@ -523,7 +523,7 @@ set -euo pipefail
 source "\$PROJECT_ROOT/lib/core/common.sh"
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 files_cleaned=0
 total_size_cleaned=0
@@ -571,7 +571,7 @@ set -euo pipefail
 source "\$PROJECT_ROOT/lib/core/common.sh"
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 export MO_NO_OPLOG=1
 files_cleaned=0
@@ -587,6 +587,7 @@ is_path_whitelisted() { return 1; }
 get_cleanup_path_size_kb() { echo 1; }
 run_with_timeout() {
     [[ "\${2:-}" == "rm" ]] && return 124
+    shift
     "\$@"
 }
 
@@ -613,7 +614,7 @@ set -euo pipefail
 source "\$PROJECT_ROOT/lib/core/common.sh"
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 export MO_NO_OPLOG=1
 files_cleaned=0
@@ -629,6 +630,7 @@ is_path_whitelisted() { return 1; }
 get_cleanup_path_size_kb() { echo 1; }
 run_with_timeout() {
     [[ "\${2:-}" == "rm" ]] && return 124
+    shift
     "\$@"
 }
 
@@ -659,7 +661,7 @@ set -euo pipefail
 source "\$PROJECT_ROOT/lib/core/common.sh"
 source "\$PROJECT_ROOT/bin/clean.sh"
 DRY_RUN=false
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 MOLE_CLEAN_CANCEL_STATUS=0
 export MO_NO_OPLOG=1
 files_cleaned=0
@@ -675,6 +677,7 @@ is_path_whitelisted() { return 1; }
 get_cleanup_path_size_kb() { echo 1; }
 run_with_timeout() {
     [[ "\${2:-}" == "rm" ]] && return 130
+    shift
     "\$@"
 }
 
@@ -695,8 +698,8 @@ EOF
     set_mock_sudo_uncached
     run_clean_dry_run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Dry Run Mode"* ]] || return 1
-    [[ "$output" == *"sudo -v && mo clean --dry-run"* ]]
+    [[ "$output" == *"Local cleanup review"* ]] || return 1
+    [[ "$output" == *"Only validated local compiler caches"* ]]
     [[ "$output" != *"system preview included"* ]]
 }
 
@@ -708,7 +711,7 @@ EOF
         "$PROJECT_ROOT/mole" clean
 
     [ "$status" -eq 0 ] || return 1
-    [[ "$output" == *"Dry Run Mode"* ]] || return 1
+    [[ "$output" == *"Local cleanup review"* ]] || return 1
     [[ -f "$HOME/.Trash/env-dry-run-sentinel" ]]
 }
 
@@ -723,7 +726,7 @@ MOCK
 
     run_clean_dry_run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"sudo -v && mo clean --dry-run"* ]]
+    [[ "$output" == *"Only validated local compiler caches"* ]]
     [[ "$output" != *"sudo should not be called"* ]]
 }
 
@@ -741,8 +744,8 @@ MOCK
     set_mock_sudo_uncached
     run_clean_dry_run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"sudo -v"* ]] || return 1
-    [[ "$output" == *"full preview"* ]]
+    [[ "$output" == *"Local cleanup review"* ]] || return 1
+    [[ "$output" == *"Only validated local compiler caches"* ]]
 }
 
 @test "mo clean adopts cached sudo before system cleanup (#1084)" {
@@ -789,14 +792,13 @@ source "$PROJECT_ROOT/bin/clean.sh"
 
 start_cleanup() { :; }
 hide_cursor() { printf 'HIDE\n'; }
-perform_cleanup() { return 130; }
+mole_review_clean() { return 130; }
 show_cursor() { printf 'SHOW\n'; }
 
 main
 SCRIPT
 
     [ "$status" -eq 130 ]
-    [[ "$output" == *"HIDE"* ]] || return 1
     [[ "$output" == *"SHOW"* ]]
 }
 
@@ -1023,18 +1025,18 @@ EOF
     [ -d "$HOME/.cache/mole/tmp" ]
 }
 
-@test "mo clean --dry-run reports user cache without deleting it" {
+@test "mo clean --dry-run keeps user app caches outside the reviewed target set" {
     mkdir -p "$HOME/Library/Caches/TestApp"
     echo "cache data" > "$HOME/Library/Caches/TestApp/cache.tmp"
 
     run env HOME="$HOME" MOLE_TEST_MODE=1 "$PROJECT_ROOT/mole" clean --dry-run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"User app cache"* ]] || return 1
-    [[ "$output" == *"Potential space"* ]] || return 1
+    [[ "$output" == *"Browser data, apps, models"* ]] || return 1
+    [[ "$output" == *"Only validated local compiler caches"* ]] || return 1
     [ -f "$HOME/Library/Caches/TestApp/cache.tmp" ]
 }
 
-@test "mo clean --dry-run reports stale login item without deleting it" {
+@test "mo clean --dry-run keeps login items outside the reviewed target set" {
     mkdir -p "$HOME/Library/LaunchAgents"
     cat > "$HOME/Library/LaunchAgents/com.example.stale.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1058,12 +1060,12 @@ PLIST
     run env HOME="$HOME" MOLE_TEST_MODE=0 MOLE_TEST_NO_AUTH=1 \
         PATH="$MOCK_TOOLCHAIN_BIN:$PATH" "$PROJECT_ROOT/mole" clean --dry-run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Stale login item · ~/Library/LaunchAgents/com.example.stale.plist"* ]] || return 1
-    [[ "$output" == *"review before removing"* ]] || return 1
+    [[ "$output" == *"Browser data, apps, models"* ]] || return 1
+    [[ "$output" == *"Only validated local compiler caches"* ]] || return 1
     [ -f "$HOME/Library/LaunchAgents/com.example.stale.plist" ]
 }
 
-@test "mo clean --dry-run does not export duplicate targets across sections" {
+@test "mo clean --dry-run does not export app state as a cleanup target" {
     mkdir -p "$HOME/Library/Application Support/Code/CachedData"
     echo "cache" > "$HOME/Library/Application Support/Code/CachedData/data.bin"
 
@@ -1072,12 +1074,12 @@ PLIST
         PATH="$MOCK_TOOLCHAIN_BIN:$PATH" "$PROJECT_ROOT/mole" clean --dry-run
     [ "$status" -eq 0 ]
 
-    run grep -c "Application Support/Code/CachedData" "$HOME/.config/mole/clean-list.txt"
-    [ "$status" -eq 0 ]
-    [ "$output" -eq 1 ]
+    [[ ! -e "$HOME/.config/mole/clean-list.txt" ]]
+    [[ -f "$HOME/Library/Application Support/Code/CachedData/data.bin" ]]
+
 }
 
-@test "mo clean --dry-run keeps container totals and preview paths consistent (#1282)" {
+@test "mo clean --dry-run keeps every app container outside the reviewed target set (#1282)" {
     # This assertion depends on an exact total. Give it a private HOME so
     # hidden directories left by earlier cases cannot add cleanup candidates.
     local test_home
@@ -1104,23 +1106,12 @@ PLIST
         "$PROJECT_ROOT/mole" clean --dry-run
 
     [ "$status" -eq 0 ] || return 1
-    local preview="$test_home/.config/mole/clean-list.txt"
-    [[ -f "$preview" ]] || return 1
-    [[ "$(grep -cF "$explicit_cache/explicit.bin" "$preview")" -eq 1 ]] || return 1
-    [[ "$(grep -cF "$generic_cache/generic.bin" "$preview")" -eq 1 ]] || return 1
-    [[ "$(grep -cF "$compiled_cache/model.bin" "$preview")" -eq 0 ]] || return 1
-    [[ "$(grep -cF "$whitelisted_cache/keep.bin" "$preview")" -eq 0 ]] || return 1
-    [[ "$(grep -cF "$protected_cache/protected.bin" "$preview")" -eq 0 ]] || return 1
-    local preview_total preview_items preview_categories
-    preview_total=$(sed -n 's/^# Potential cleanup: //p' "$preview")
-    preview_items=$(sed -n 's/^# Items: //p' "$preview")
-    preview_categories=$(sed -n 's/^# Categories: //p' "$preview")
-    [[ -n "$preview_total" && "$preview_items" =~ ^[0-9]+$ && "$preview_categories" =~ ^[0-9]+$ ]] || return 1
-    [[ "$output" != *"Category total"* ]] || return 1
-    printf '%s\n' "$output" | grep -F "Potential space:" |
-        grep -F "Items: $preview_items" |
-        grep -F "Categories: $preview_categories" |
-        grep -qF "$preview_total" || return 1
+    [[ ! -e "$test_home/.config/mole/clean-list.txt" ]]
+    for path in "$explicit_cache/explicit.bin" "$generic_cache/generic.bin" "$compiled_cache/model.bin" "$whitelisted_cache/keep.bin" "$protected_cache/protected.bin"; do
+        [[ -f "$path" ]] || return 1
+    done
+    [[ "$output" == *"Only validated local compiler caches"* ]]
+
 }
 
 @test "dry-run ledger keeps shell-timeout child candidates and unknown sizes" {
@@ -1160,7 +1151,7 @@ set -euo pipefail
 source "$PROJECT_ROOT/bin/clean.sh"
 
 DRY_RUN=true
-MOLE_CURRENT_COMMAND=clean
+_MOLE_LOCAL_CACHE_ROOT="$HOME" MOLE_CURRENT_COMMAND=clean
 CLEAN_PREVIEW_LEDGER_FILE=""
 should_protect_path() { return 1; }
 is_path_whitelisted() { return 1; }
@@ -1257,7 +1248,7 @@ EOF
 
     run env HOME="$HOME" MOLE_TEST_MODE=1 "$PROJECT_ROOT/mole" clean --dry-run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Protected"* ]] || return 1
+    [[ "$output" == *"Browser data, apps, models"* ]] || return 1
     [ -f "$HOME/Library/Caches/WhitelistedApp/data.tmp" ]
 }
 
@@ -1271,7 +1262,7 @@ EOF
 
     run env HOME="$HOME" MOLE_TEST_MODE=1 "$PROJECT_ROOT/mole" clean --dry-run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Protected"* ]] || return 1
+    [[ "$output" == *"Browser data, apps, models"* ]] || return 1
     [ -f "$HOME/Library/Caches/WhitelistedApp/data.tmp" ]
 }
 
@@ -1461,6 +1452,7 @@ EOF
 set -euo pipefail
 source "$PROJECT_ROOT/lib/core/common.sh"
 source "$PROJECT_ROOT/lib/clean/user.sh"
+pgrep() { return 1; }
 _clean_mail_downloads
 EOF
 

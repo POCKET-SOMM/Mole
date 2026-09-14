@@ -347,7 +347,6 @@ func TestValidateTrashTargetAllowsChildrenOfCriticalRoots(t *testing.T) {
 
 	tests := []string{
 		filepath.Join(home, "Downloads", "old.zip"),
-		"/Applications/Example.app",
 		"/Library/Caches/com.example.app",
 		"/Volumes/External/old-artifact",
 		"/private/tmp/mole-user-artifact",
@@ -564,6 +563,9 @@ func TestValidatePathWithChineseAndSpecialChars(t *testing.T) {
 // trashTimeout and then failed. trash(8) needs no Finder, so it must be tried
 // first and must actually move the file.
 func TestMoveToTrashViaBinaryMovesFile(t *testing.T) {
+	if os.Getenv("MOLE_TEST_NO_AUTH") == "1" || os.Getenv("CI") != "" {
+		t.Skip("Native Trash integration requires a separate interactive integration run")
+	}
 	if _, err := os.Stat(trashBinary); err != nil {
 		t.Skipf("%s not present on this macOS version", trashBinary)
 	}

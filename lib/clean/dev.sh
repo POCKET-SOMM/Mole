@@ -638,6 +638,21 @@ clean_guarded_dev_cache_root() {
     local family="$4"
     local display_name="$5"
     shift 5
+    local _MOLE_LOCAL_CACHE_ROOT="${_MOLE_LOCAL_CACHE_ROOT:-}"
+    local _MOLE_LOCAL_CACHE_PHYSICAL="${_MOLE_LOCAL_CACHE_PHYSICAL:-}"
+    if [[ -n "${_MOLE_REVIEW_PHASE:-}" ]]; then
+        case "$process_probe" in
+            pyinstaller_build_process_state | clang_module_cache_process_state)
+                _MOLE_LOCAL_CACHE_ROOT="$cache_root"
+                ;;
+            *) return 0 ;;
+        esac
+        local local_probe_rc=0
+        mole_path_is_local "$cache_root" || local_probe_rc=$?
+        [[ $local_probe_rc -ne 124 && $local_probe_rc -lt 128 ]] || return "$local_probe_rc"
+        [[ $local_probe_rc -eq 0 ]] || return 0
+        _MOLE_LOCAL_CACHE_PHYSICAL=$(cd -P "$cache_root" && pwd -P) || return 2
+    fi
     [[ $# -gt 0 ]] || return 0
     mole_cleanup_targets_exist "$@" || return 0
 
